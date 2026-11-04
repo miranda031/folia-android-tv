@@ -20,6 +20,7 @@ import { usePlayerOverlayObstacle } from '../hooks/usePlayerOverlayLayout';
 import { resolveLyricSeekMediaTime } from '../utils/lyrics/lyricSeekTime';
 import { HifiProgressRow } from './hifi/HifiBadge';
 import { useIsHifiRoute } from './hifi/useHifiSignalPath';
+import { isAndroidTv } from '../platform/runtime';
 
 export interface TrackNavigation {
     /** 当前曲目的稳定身份，用于识别「确实换歌了」；相邻两首同名时标题字符串不变，不能拿标题判断 */
@@ -167,6 +168,7 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
     const phoneFitFixedExpanded = phoneFitEnabled && phoneFitOrientation === 'portrait';
     // 定位模式强制展开：用户要看到的是最终形态的胶囊，而不是一条细进度条。
     const showExpanded = phoneFitFixedExpanded
+        || (isAndroidTv() && currentView === 'player')
         || isPositioning
         || isHovered
         || isTouchExpanded
@@ -596,7 +598,9 @@ const ExpandedView: React.FC<ExpandedViewProps> = ({
 
             {/* Row 3: Loop Button, Play Button, Lyrics Button */}
             <button
+                type="button"
                 data-folia-player-bar-play="true"
+                data-tv-nav="player-bar"
                 onClick={(e) => {
                     e.stopPropagation();
                     onTogglePlay();

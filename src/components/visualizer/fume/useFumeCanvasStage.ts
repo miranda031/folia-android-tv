@@ -8,6 +8,7 @@ import { clamp } from './fumeMath';
 import { createStaticBlockSnapshot, drawFumeLiveBlock, type FumeLiveBlockParams } from './fumeCanvasText';
 import { FumeLiveRaster } from './fumeLiveRaster';
 import { readFumeAudioLevels, type FumeStageDriver, type FumeStageScene } from './fumeStage';
+import { resolveVisualizerDpr } from '../../../utils/visualizerDpr';
 
 // src/components/visualizer/fume/useFumeCanvasStage.ts
 // Fume's stage: one full-viewport canvas redrawn every frame - background, then every block on screen,
@@ -72,7 +73,7 @@ export const useFumeCanvasStage = (
 
         const width = Math.max(Math.floor(viewport.width), 1);
         const height = Math.max(Math.floor(viewport.height), 1);
-        const dpr = window.devicePixelRatio || 1;
+        const dpr = resolveVisualizerDpr();
 
         if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) {
             canvas.width = Math.floor(width * dpr);
@@ -97,7 +98,7 @@ export const useFumeCanvasStage = (
 
             const currentWidth = Math.max(Math.floor(viewport.width), 1);
             const currentHeight = Math.max(Math.floor(viewport.height), 1);
-            const currentDpr = window.devicePixelRatio || 1;
+            const currentDpr = resolveVisualizerDpr();
 
             if (canvas.width !== Math.floor(currentWidth * currentDpr) || canvas.height !== Math.floor(currentHeight * currentDpr)) {
                 canvas.width = Math.floor(currentWidth * currentDpr);

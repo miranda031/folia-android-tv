@@ -10,6 +10,7 @@ import { createLatticeTimeline, stepLatticeSpring } from './latticeLyricTimeline
 import { createLatticeLyricFrameLoop } from './latticeLyricFrameLoop';
 import type { LatticeLyricInput, LatticeLyricRuntime } from './types';
 import { resolveSingleTrackSubtitleMode } from '../../../../utils/lyrics/alternateText';
+import { isAndroidTv } from '../../../../platform/runtime';
 
 // src/components/app/lattice/lyrics/createLatticeLyricRuntime.ts
 interface Track { view: LatticeLineView; y: number; vy: number; scale: number; vs: number;
@@ -28,7 +29,9 @@ let initialization: Promise<unknown> = Promise.resolve();
  * never costs more than before.
  */
 export const latticeLyricResolution = (devicePixelRatio: number) =>
-    Math.min(2, Math.max(1, Number.isFinite(devicePixelRatio) && devicePixelRatio > 0 ? Math.ceil(devicePixelRatio) : 1));
+    isAndroidTv()
+        ? 1
+        : Math.min(2, Math.max(1, Number.isFinite(devicePixelRatio) && devicePixelRatio > 0 ? Math.ceil(devicePixelRatio) : 1));
 
 /**
  * 卡顿治理：建行（逐字素测量 + 排版）与建片（建 canvas → fillText → 建 Pixi 纹理 → 上传）

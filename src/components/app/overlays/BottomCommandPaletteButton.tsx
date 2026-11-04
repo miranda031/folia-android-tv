@@ -69,6 +69,8 @@ const BottomCommandPaletteButton: React.FC = () => {
         <button
             type="button"
             data-folia-command-palette-button="true"
+            // 电视：遥控器从内容区按 ↓ 落到屏幕底部这一行，焦点圈用这个标记画。
+            data-tv-nav="palette"
             // 文案键和 `openCommandPalette` 同属 help 块（键盘快捷键那一组），不是 ui。
             aria-label={t('help.commandPaletteButton')}
             title={t('help.commandPaletteButton')}

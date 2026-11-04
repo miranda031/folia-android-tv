@@ -2,6 +2,7 @@ import React, { memo, useId, useLayoutEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { kitTransition, useKitReducedMotion } from './motion';
 import { usePicturesInView } from './usePicturesInView';
+import { isAndroidTv } from '../../../../platform/runtime';
 
 // src/components/modal/settings/kit/PictureGrid.tsx
 // A choice among many options that differ in look: pictures in a fixed number of columns, each
@@ -166,8 +167,6 @@ export const PictureGrid = <T extends string>({ value, options, picture, columns
         if ((!step && key !== 'Home' && key !== 'End') || event.altKey || event.ctrlKey || event.metaKey) {
             return;
         }
-        event.preventDefault();
-        event.stopPropagation();
         // Counted from the picture that has focus: the chosen one, unless the caller has not taken the last choice yet.
         const keyAt = options.findIndex(option => option.value === valueAt(event.target));
         const from = keyAt >= 0 ? keyAt : chosenAt;
@@ -177,9 +176,19 @@ export const PictureGrid = <T extends string>({ value, options, picture, columns
             next = last;
         }
         if (next < 0 || next > last || next === from) {
+            if (!isAndroidTv()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
             return;
         }
-        event.currentTarget.querySelectorAll<HTMLElement>('[data-value]')[next].focus();
+        event.preventDefault();
+        event.stopPropagation();
+        const nextTile = event.currentTarget.querySelectorAll<HTMLElement>('[data-value]')[next];
+        nextTile.focus({ preventScroll: isAndroidTv() });
+        if (isAndroidTv()) {
+            nextTile.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
         if (arrowKeys === 'choose' && next !== chosenAt) onChange(options[next].value);
     };
 

@@ -1,5 +1,6 @@
 // Copyright (c) 2026 chthollyphile
 import type { LumiereRenderQuality, LumiereTuning } from '../../../types';
+import { isAndroidTv } from '../../../platform/runtime';
 import { snapResolutionToTexturePool } from '../pixi/pixiTextureBudget';
 import type { LumiereProgramOptions } from './lumiereProgram';
 import type { LumiereSceneTuning } from './types';
@@ -38,8 +39,9 @@ export const LUMIERE_QUALITY_PROFILES: Record<LumiereRenderQuality, LumiereQuali
 /** 渲染分辨率上限：再高的屏幕也按 2 倍画，4K / 高 DPI 下整屏光场的开销是按像素数涨的。 */
 export const LUMIERE_MAX_RENDER_RESOLUTION = 2;
 
-/** 画布（文字、画框）的渲染分辨率：devicePixelRatio 钳在 1..2。 */
+/** 画布（文字、画框）的渲染分辨率：devicePixelRatio 钳在 1..2（电视端固定为 1 以降低 75% 显存与填充开销）。 */
 export const resolveLumiereRenderResolution = (devicePixelRatio: number | undefined) => {
+    if (isAndroidTv()) return 1;
     const ratio = typeof devicePixelRatio === 'number' && Number.isFinite(devicePixelRatio) ? devicePixelRatio : 1;
     return Math.min(LUMIERE_MAX_RENDER_RESOLUTION, Math.max(1, ratio));
 };

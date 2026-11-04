@@ -1,9 +1,14 @@
 package top.izuna.foliamajor;
 
+import android.app.UiModeManager;
 import android.content.ComponentCallbacks2;
+import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.view.KeyEvent;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -14,6 +19,7 @@ import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.WebViewListener;
 
 import java.io.File;
+import java.lang.reflect.Method;
 
 public class MainActivity extends BridgeActivity {
     private long lastWebViewRecoveryAt = 0L;
@@ -52,9 +58,26 @@ public class MainActivity extends BridgeActivity {
         );
         installWebViewRendererGuard();
         WebView webView = getBridge().getWebView();
+        WebView.setWebContentsDebuggingEnabled(true);
         WebSettings settings = webView.getSettings();
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        if (isTvDevice()) {
+            // 电视上用 UA 打标：原生在页面第一帧之前就定好了「这是电视」，首启引导默认选哪套
+            // 资料库界面、屏幕常亮默认开不开，都读这个结论，不用等页面起来再问原生。
+            settings.setUserAgentString(settings.getUserAgentString() + " FoliaTV");
+            webView.addJavascriptInterface(new TvHardwareBridge(this, webView), "FoliaTvHardware");
+            // 关掉 WebView 的空间导航：它按方向键自己挪 DOM 焦点，遥控器上表现为「按一下方向键，
+            // 焦点跑到搜索框、系统输入法弹出来盖住半个屏幕」。API 33 起这个开关默认是开的，
+            // 方向键改由页面自己接管（src/library/suites/grid/home/useTvHomeNavigation.ts）。
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                disableSpatialNavigation(settings);
+            }
+            // 电视端默认开启沉浸式全屏，消除系统状态栏/导航栏黑边并铺满 1080p/4K 视口。
+            if (!AdaptiveLayout.hasExplicitPreference(this)) {
+                AdaptiveLayout.setEnabled(this, true);
+            }
+        }
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
@@ -81,6 +104,33 @@ public class MainActivity extends BridgeActivity {
         webView.postDelayed(() -> restoreAdaptiveLayout(webView), 1500);
         webView.postDelayed(() -> PhoneFitCutout.apply(this), 500);
         webView.postDelayed(() -> PhoneFitCutout.apply(this), 1500);
+    }
+
+    /**
+     * 这台设备是不是电视（AOSP TV / VIDAA / Google TV）。
+     *
+     * 走 UiModeManager 而不是看产品名或型号：电视固件五花八门，但 UI mode 这一个属性是统一的，
+     * 手机/平板投屏与车机不会误判成电视。
+     */
+    private boolean isTvDevice() {
+        UiModeManager uiModeManager = (UiModeManager) getSystemService(Context.UI_MODE_SERVICE);
+        return uiModeManager != null
+            && uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
+    }
+
+    /**
+     * 关掉 WebView 的空间导航（spatial navigation）。
+     *
+     * 这个开关在 AOSP 里是 @hide API，公开 SDK 里没有，只能反射调用；找不到就当这个 WebView
+     * 没有这个能力（页面那边还有一层捕获阶段的兜底，见 useTvHomeNavigation.ts）。
+     */
+    private static void disableSpatialNavigation(WebSettings settings) {
+        try {
+            Method method = WebSettings.class.getMethod("setSpatialNavigationEnabled", boolean.class);
+            method.invoke(settings, false);
+        } catch (Throwable error) {
+            // 这个 WebView 版本没有这个方法：方向键仍旧由页面自己接管。
+        }
     }
 
     /**
@@ -265,8 +315,80 @@ public class MainActivity extends BridgeActivity {
                 "level=" + level,
                 "onTrimMemory"
             );
+            int trimThreshold = isTvDevice()
+                ? ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW
+                : ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL;
+            if ((level >= trimThreshold || level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) && getBridge() != null) {
+                WebView webView = getBridge().getWebView();
+                if (webView != null) {
+                    webView.post(() -> webView.clearCache(false));
+                }
+            }
         }
         super.onTrimMemory(level);
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event != null && isTvDevice() && getBridge() != null) {
+            WebView webView = getBridge().getWebView();
+            if (webView != null && !webView.hasFocus()) {
+                webView.requestFocus();
+            }
+            int keyCode = event.getKeyCode();
+            String mediaAction = null;
+            boolean allowRepeat = false;
+            switch (keyCode) {
+                case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+                    mediaAction = "toggle";
+                    break;
+                case KeyEvent.KEYCODE_MEDIA_PLAY:
+                    mediaAction = "play";
+                    break;
+                case KeyEvent.KEYCODE_MEDIA_PAUSE:
+                    mediaAction = "pause";
+                    break;
+                case KeyEvent.KEYCODE_MEDIA_NEXT:
+                    mediaAction = "next";
+                    break;
+                case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
+                    mediaAction = "previous";
+                    break;
+                case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
+                    mediaAction = "seekForward";
+                    allowRepeat = true;
+                    break;
+                case KeyEvent.KEYCODE_MEDIA_REWIND:
+                    mediaAction = "seekBackward";
+                    allowRepeat = true;
+                    break;
+                default:
+                    break;
+            }
+            if (mediaAction != null) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN && (allowRepeat || event.getRepeatCount() == 0)) {
+                    dispatchWebCustomEvent(
+                        "folia-native-media-action",
+                        "{\"action\":\"" + mediaAction + "\"}"
+                    );
+                }
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_MENU) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                    dispatchWebCustomEvent("folia-tv-menu", "{}");
+                }
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
+    private void dispatchWebCustomEvent(String eventName, String detailJson) {
+        WebView webView = getBridge() != null ? getBridge().getWebView() : null;
+        if (webView == null) return;
+        String script = "window.dispatchEvent(new CustomEvent('" + eventName + "', { detail: " + detailJson + " }));";
+        webView.post(() -> webView.evaluateJavascript(script, null));
     }
 
     @Override
@@ -275,6 +397,9 @@ public class MainActivity extends BridgeActivity {
         if (hasFocus && getBridge() != null) {
             WebView webView = getBridge().getWebView();
             if (webView != null) {
+                if (isTvDevice() && !webView.hasFocus()) {
+                    webView.requestFocus();
+                }
                 webView.post(() -> restoreAdaptiveLayout(webView));
                 webView.post(() -> PhoneFitCutout.apply(this));
             }

@@ -27,6 +27,7 @@ import {
 } from './pendoloClockworkScene';
 import { PendoloClockworkRenderer } from './pendoloClockworkWebGL';
 import type { PendoloBeatFxShared } from './usePendoloBeatFx';
+import { resolveVisualizerDpr } from '../../../utils/visualizerDpr';
 
 // src/components/visualizer/pendolo/PendoloClockworkCanvas.tsx
 
@@ -322,7 +323,7 @@ const PendoloClockworkCanvas: React.FC<PendoloClockworkCanvasProps> = ({
                 animationFrameId = window.requestAnimationFrame(render);
                 return;
             }
-            const dpr = window.devicePixelRatio || 1;
+            const dpr = resolveVisualizerDpr(window.devicePixelRatio);
 
             const renderer = rendererRef.current;
             if (useWebglRef.current && !renderer?.isReady) useWebglRef.current = false;

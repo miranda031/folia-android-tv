@@ -12,6 +12,7 @@ import { kitMotionTokens, useKitReducedMotion } from '../modal/settings/kit/moti
 import { openLoginWindow, useLoginWindowStore } from './loginWindowStore';
 import { AccountPicture, PlatformMark } from './PlatformMark';
 import { pillProvider, pillSeenNext, rowStatus, type PillSeen } from './platformRows';
+import { isAndroidTv } from '../../platform/runtime';
 
 // src/components/login/SwitcherPill.tsx
 // 主页右下角的切换器：正在用的账号的头像，角上是平台的记号（没有人登录时只有记号；登录失效时记号上
@@ -117,6 +118,7 @@ const SwitcherPill: React.FC<SwitcherPillProps> = ({ account, onBackToPlayer }) 
                 <Tooltip text={t('home.switchOnlineProvider')} className="inline-flex">
                     <button
                         type="button"
+                        data-tv-nav="account-switcher"
                         onClick={event => openLoginWindow(provider.providerId, event.currentTarget.querySelector('[data-login-pill]'))}
                         aria-label={t('home.switchOnlineProvider')}
                         className="st-t-fast flex h-10 min-w-10 items-center rounded-full transition-colors hover:bg-[var(--st-fill)]"
@@ -132,10 +134,11 @@ const SwitcherPill: React.FC<SwitcherPillProps> = ({ account, onBackToPlayer }) 
                         </span>
                     </button>
                 </Tooltip>
-                <span className="mx-1.5 hidden h-6 w-px bg-[var(--st-line2)] md:block" aria-hidden="true" />
-                <Tooltip text={t('home.backToPlayer')} className="hidden md:inline-flex">
+                <span className={`mx-1.5 h-6 w-px bg-[var(--st-line2)] ${isAndroidTv() ? 'block' : 'hidden md:block'}`} aria-hidden="true" />
+                <Tooltip text={t('home.backToPlayer')} className={isAndroidTv() ? 'inline-flex' : 'hidden md:inline-flex'}>
                     <button
                         type="button"
+                        data-tv-nav="back-to-player"
                         onClick={onBackToPlayer}
                         aria-label={t('home.backToPlayer')}
                         className="st-t-fast flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-[var(--st-fill)]"

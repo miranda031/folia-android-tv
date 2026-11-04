@@ -87,6 +87,8 @@ export const Tabs: React.FC<TabsProps> = ({ tabs, activeId, onSelect, action, co
                             key={tab.id}
                             ref={current ? activeRef : undefined}
                             type="button"
+                            data-tv-nav="settings-tab"
+                            data-settings-tab-id={tab.id}
                             // The mark is a line and a colour; assistive tech and tests need the state said out loud.
                             role={contents ? undefined : 'tab'}
                             aria-selected={contents ? undefined : current}

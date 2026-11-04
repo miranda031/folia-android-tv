@@ -7,6 +7,7 @@ import { SettingsKitThemeContext, settingsTokens } from '../modal/settings/kit/k
 import { kitMotionTokens, kitTransition, useKitReducedMotion } from '../modal/settings/kit/motion';
 import { tabStops } from './Sheet';
 import { tabTarget } from './sheetKeys';
+import { isAndroidTv } from '../../platform/runtime';
 
 // src/components/shared/StudioWindow.tsx
 // The frame of a work window that shows what it edits: a header (back, title, a slot, actions), a
@@ -72,7 +73,14 @@ export const StudioWindow: React.FC<StudioWindowProps> = ({
     useEffect(() => {
         const panel = panelRef.current;
         if (panel && !panel.contains(document.activeElement)) {
-            panel.focus({ preventScroll: true });
+            if (isAndroidTv()) {
+                const initialControl = panel.querySelector<HTMLElement>(
+                    'aside [role="tab"][aria-selected="true"], aside button:not([disabled]), aside [tabindex="0"], header button:not([disabled])',
+                );
+                (initialControl ?? panel).focus({ preventScroll: true });
+            } else {
+                panel.focus({ preventScroll: true });
+            }
         }
         return () => {
             const active = document.activeElement;
@@ -180,12 +188,13 @@ export const StudioWindow: React.FC<StudioWindowProps> = ({
                 aria-labelledby={titleId}
                 tabIndex={-1}
                 inert={!isPresent}
+                data-folia-studio-window="true"
                 data-ponder={ponderId}
                 onKeyDown={keepTabInside}
                 initial={ARRIVE_FROM}
                 animate={{ opacity: 1, y: 0, scale: 1, transition: kitTransition('unfold', reduced) }}
                 exit={{ ...LEAVE_TO, transition: kitTransition('move', reduced) }}
-                className="st-window relative grid h-[780px] max-h-full w-[1240px] max-w-full grid-rows-[64px_minmax(0,1fr)] overflow-hidden rounded-2xl bg-[var(--st-win)] text-[color:var(--st-t1)] shadow-[0_36px_90px_rgba(0,0,0,0.5),0_0_0_1px_var(--st-line2)]"
+                className="st-window relative grid h-[min(780px,92vh)] max-h-full w-[min(1240px,95vw)] max-w-full grid-rows-[56px_minmax(0,1fr)] sm:grid-rows-[64px_minmax(0,1fr)] overflow-hidden rounded-2xl bg-[var(--st-win)] text-[color:var(--st-t1)] shadow-[0_36px_90px_rgba(0,0,0,0.5),0_0_0_1px_var(--st-line2)]"
                 // The window holds focus without a mark of its own.
                 style={{ outline: 'none', ...settingsTokens(isDaylight, theme), ...kitMotionTokens(reduced) }}
             >
@@ -194,6 +203,7 @@ export const StudioWindow: React.FC<StudioWindowProps> = ({
                         <Tooltip text={backLabel} className="inline-flex shrink-0">
                             <button
                                 type="button"
+                                data-tv-nav="studio-back"
                                 onClick={onBack}
                                 aria-label={backLabel}
                                 className="st-t-fast grid h-8 w-8 place-items-center rounded-lg text-[color:var(--st-t2)] transition-colors hover:bg-[var(--st-fill)] hover:text-[color:var(--st-t1)]"
@@ -201,13 +211,13 @@ export const StudioWindow: React.FC<StudioWindowProps> = ({
                                 <ChevronLeft size={18} />
                             </button>
                         </Tooltip>
-                        <h2 id={titleId} className="ml-1 mr-2 shrink-0 whitespace-nowrap text-xl font-semibold leading-8">{title}</h2>
+                        <h2 id={titleId} className="ml-1 mr-2 shrink-0 whitespace-nowrap text-lg sm:text-xl font-semibold leading-8">{title}</h2>
                         <div className="flex min-w-0 flex-1 items-center gap-2">{slot}</div>
                         {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
                     </header>
-                    <div inert={hasOver} className="st-scroll flex min-h-0 flex-col overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:overflow-hidden">
-                        <section className="flex h-[64vh] min-h-[380px] min-w-0 shrink-0 flex-col gap-4 px-4 pb-6 sm:px-6 lg:h-auto lg:min-h-0">{stage}</section>
-                        <aside className="flex min-w-0 shrink-0 flex-col border-t border-[var(--st-line)] lg:min-h-0 lg:border-l lg:border-t-0">
+                    <div inert={hasOver} className="st-scroll flex min-h-0 flex-col overflow-y-auto md:grid md:grid-cols-[minmax(0,1fr)_360px] lg:grid-cols-[minmax(0,1fr)_420px] md:overflow-hidden">
+                        <section className="flex h-[56vh] min-h-[280px] min-w-0 shrink-0 flex-col gap-3 px-4 pb-4 sm:px-6 md:h-auto md:min-h-0">{stage}</section>
+                        <aside className="flex min-w-0 shrink-0 flex-col border-t border-[var(--st-line)] md:min-h-0 md:border-l md:border-t-0">
                             {children}
                         </aside>
                     </div>
@@ -220,7 +230,7 @@ export const StudioWindow: React.FC<StudioWindowProps> = ({
 
 /** The part of the column under its tabs: it holds the open tab's groups and scrolls where the window is wide enough for two columns. */
 export const StudioColumnBody: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <div className="st-scroll px-4 pb-10 sm:pl-6 sm:pr-3 lg:min-h-0 lg:flex-1 lg:overflow-y-scroll">{children}</div>
+    <div className="st-scroll px-4 pb-8 sm:pl-5 sm:pr-3 md:min-h-0 md:flex-1 md:overflow-y-scroll">{children}</div>
 );
 
 export default StudioWindow;

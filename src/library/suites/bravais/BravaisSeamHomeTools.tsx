@@ -17,6 +17,8 @@ import { BRAVAIS_SPECIAL_ICONS } from './bravaisSpecialIcons';
 import { closeBravaisHomePopover, setBravaisHomeOpenRequest, setBravaisHomePopover, useBravaisHomeUiStore } from './bravaisHomeUiStore';
 import { useBravaisReducedTransitions } from './bravaisMotion';
 import { bravaisPopMotion, seamPopAnchorFor } from './bravaisSeamMotion';
+import { isAndroidTv } from '../../../platform/runtime';
+import { collectTvFocusables, focusTvElement } from '../../../utils/tvSpatialFocus';
 
 // src/library/suites/bravais/BravaisSeamHomeTools.tsx
 // 首页窄缝底部的工具格。
@@ -113,6 +115,16 @@ const BravaisSeamHomeTools: React.FC<{
         };
         document.addEventListener('pointerdown', onPointerDown, true);
         return () => document.removeEventListener('pointerdown', onPointerDown, true);
+    }, [open]);
+
+    useEffect(() => {
+        if (!open || !isAndroidTv()) return undefined;
+        const raf = window.requestAnimationFrame(() => {
+            const menu = dockRef.current?.querySelector<HTMLElement>('[data-bravais-seam-menu]');
+            const first = menu ? collectTvFocusables(menu)[0] : null;
+            if (first) focusTvElement(first);
+        });
+        return () => window.cancelAnimationFrame(raf);
     }, [open]);
 
     // 菜单开着时 Esc 先收起它（preventDefault 让墙的 Esc 阶梯跳过这次按键）。

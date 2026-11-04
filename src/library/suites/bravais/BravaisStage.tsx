@@ -449,7 +449,9 @@ const BravaisStage: React.FC<LibrarySuiteStageProps> = ({
     const onSeamTab = useCallback((event?: MouseEvent<HTMLButtonElement>) => {
         if (useBravaisSeamStore.getState().level === 'hidden') useBravaisSeamStore.getState().restore();
         else seam.reopenHere();
-        if (event?.detail === 0) focusSeamWhenOpen();
+        if (event?.detail === 0 || (typeof document !== 'undefined' && document.documentElement.classList.contains('folia-tv'))) {
+            focusSeamWhenOpen();
+        }
     }, [focusSeamWhenOpen, seam.reopenHere]);
 
     // 左上角返回（bravaisBack）：渲染时判一次（显不显示、可访问名），点击时按最新的层、面板与播放状态再判一次。

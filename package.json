@@ -8,7 +8,7 @@
     "email": "chthollyphile@users.noreply.github.com"
   },
   "private": true,
-  "version": "0.7.25-android.285",
+  "version": "0.7.25-tv.14",
   "license": "AGPL-3.0",
   "type": "module",
   "main": "electron/main.cjs",
@@ -62,6 +62,7 @@
     "models:fetch": "node build/fetchModels.mjs",
     "manual:ai-probe": "node test/manual/ai_probe.mjs",
     "verify:android": "node dev/verify-android-bundle.mjs",
+    "prebuild:capacitor": "node dev/build/clean-dist.mjs",
     "build:capacitor": "cross-env FOLIA_BUILD_TARGET=capacitor VITE_NETEASE_API_BASE=extension VITE_KUGOU_API_BASE=extension VITE_QQ_API_BASE=extension vite build",
     "cap:sync:android": "npm run build:capacitor && cap sync android",
     "cap:open:android": "cap open android",

@@ -28,6 +28,7 @@ export const PictureChoice = <T extends string>({ value, options, onChange, disa
                     <button
                         key={option.value}
                         type="button"
+                        data-tv-nav="settings-choice"
                         aria-pressed={selected}
                         disabled={disabled}
                         onClick={() => {

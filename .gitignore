@@ -24,7 +24,22 @@ dist-ssr
 *.sw?
 
 .vercel
-.env*.local
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*secret*
+local.properties
+keystore.properties
+*.jks
+*.keystore
+*.apk
+*.aab
+.gradle/
+android/.gradle/
+android/build/
+android/app/build/
 
 dev-dist/
 example/

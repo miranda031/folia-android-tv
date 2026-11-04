@@ -11,6 +11,8 @@ import { WallToolsQuickRow, WallToolsRow, type WallToolsEntry, type WallToolsQui
 import { useWallToolsCommonActions } from './useWallToolsCommonActions';
 import { WallToolsQueueIsland } from './WallToolsQueueIsland';
 import { useWallToolsHost } from './wallToolsHost';
+import { isAndroidTv } from '../../platform/runtime';
+import { collectTvFocusables, focusTvElement } from '../../utils/tvSpatialFocus';
 import './WallToolsButton.css';
 
 // src/components/wall/WallToolsButton.tsx
@@ -128,6 +130,35 @@ export function WallToolsSurface({ idPrefix, label, isDaylight, destination, ent
             document.removeEventListener('pointerdown', handlePointerDown);
             document.removeEventListener('keydown', handleKeyDown);
         };
+    }, [isOpen]);
+
+    const wasOpenRef = useRef(false);
+    useEffect(() => {
+        if (!isAndroidTv()) return undefined;
+        const wasOpen = wasOpenRef.current;
+        wasOpenRef.current = isOpen;
+        if (isOpen && !wasOpen) {
+            const timer = window.setTimeout(() => {
+                const panel = rootRef.current?.querySelector<HTMLElement>('.lattice-tools-panel');
+                const first = panel ? collectTvFocusables(panel)[0] : null;
+                if (first) focusTvElement(first);
+            }, 50);
+            return () => window.clearTimeout(timer);
+        }
+        if (!isOpen && wasOpen) {
+            const timer = window.setTimeout(() => {
+                const active = document.activeElement;
+                const shouldRestore = !active || active === document.body || Boolean(rootRef.current?.contains(active));
+                if (!shouldRestore) return;
+                if (document.querySelector('[data-folia-settings-panel="true"], [data-folia-keyboard-window="true"], [data-folia-sheet="true"]')) {
+                    return;
+                }
+                const trigger = rootRef.current?.querySelector<HTMLElement>('button:not([disabled])');
+                if (trigger) focusTvElement(trigger);
+            }, 50);
+            return () => window.clearTimeout(timer);
+        }
+        return undefined;
     }, [isOpen]);
 
     const handleOpenCommandPalette = () => {

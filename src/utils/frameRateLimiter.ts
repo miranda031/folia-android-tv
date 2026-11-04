@@ -2,6 +2,7 @@
 // Shared helpers and global RAF gate for optional visualizer frame throttling.
 
 import { IS_ANDROID_WEBVIEW } from './platform';
+import { isAndroidTv } from '../platform/runtime';
 import type { VisualizerFrameRate } from '../types';
 
 type AnimationFrameCallback = FrameRequestCallback;
@@ -197,10 +198,13 @@ export const installGlobalVisualizerFrameRateLimiter = (overrideFrameRate?: Visu
     // 绘制次数减半，明显降低发热与耗电；30fps 对音乐律动依然顺滑。这只是默认值 —— 设置里仍有
     // 30/60/90/120/不限制，用户一旦手动选过（storage 里有值）就永远以他的选择为准。
     const storedFrameRateRaw = window.localStorage.getItem(VISUALIZER_FRAME_RATE_STORAGE_KEY);
+    // 电视端不做全局 30fps RAF 节流：该钩子装在 framer-motion 之前，限成 30fps 会连带把遥控器焦点移动、
+    // 3D 海报滑动与蜂窝网格弹簧动画全部卡在 30 帧；电视端改由画布 DPR 限幅与去高斯模糊省 GPU，UI 保持满 60fps。
     const effectiveFrameRate = initialFrameRate === 'off'
         && !overrideFrameRate
         && storedFrameRateRaw === null
         && IS_ANDROID_WEBVIEW
+        && !isAndroidTv()
         ? 30
         : initialFrameRate;
     if (effectiveFrameRate === 'off') {

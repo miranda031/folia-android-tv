@@ -32,6 +32,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, contents, activeI
                 <h2 className="min-w-0 truncate text-xl font-semibold leading-8 text-[color:var(--st-t1)]">{title}</h2>
                 <button
                     type="button"
+                    data-tv-nav="settings-close"
                     onClick={onClose}
                     aria-label={closeLabel}
                     className="st-t-fast grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[color:var(--st-t2)] transition-colors hover:bg-[var(--st-fill)] hover:text-[color:var(--st-t1)]"

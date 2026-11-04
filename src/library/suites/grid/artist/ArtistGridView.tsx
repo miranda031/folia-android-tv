@@ -50,7 +50,8 @@ import { CollectionListItem, SidePanelList } from '../../../../components/shared
 import { GridListSearchButton } from '../../../../components/shared/GridListSearchButton';
 import { useGridCommandFilter } from '../../../../hooks/useGridCommandFilter';
 import { useReducedMotionFor } from '../../../../hooks/useReducedMotionFor';
-import { hasBlockingWindow } from '../../../../utils/keyboardTargets';
+import { hasBlockingWindow, isTextEntryTarget } from '../../../../utils/keyboardTargets';
+import { isAndroidTv } from '../../../../platform/runtime';
 import { closeCommandFilter } from '../../../../stores/useAppViewStore';
 import { deriveProgressiveLoadingState } from '../shared/progressiveGrid';
 import { useProgressiveItemEntrance } from '../shared/useProgressiveItemEntrance';
@@ -945,6 +946,12 @@ const ArtistGridView: React.FC<ArtistGridViewProps> = ({
 
                 if (bestNextIdx !== focusedIndex) {
                     centerOnIndex(bestNextIdx, true);
+                } else if (e.key === 'ArrowUp' && isAndroidTv()) {
+                    const root = containerRef.current?.parentElement;
+                    const headerBtn = root?.querySelector<HTMLElement>(
+                        '[data-tv-nav="grid-title"], [data-tv-nav="grid-back"]',
+                    );
+                    headerBtn?.focus({ preventScroll: true });
                 }
             }
         };
@@ -967,6 +974,24 @@ const ArtistGridView: React.FC<ArtistGridViewProps> = ({
         showFullBio,
         showSidePanel,
     ]);
+
+    useEffect(() => {
+        if (!isInteractive || showSidePanel || showCutInPanel || showFullBio) {
+            return;
+        }
+        const focusContainer = () => {
+            const active = document.activeElement;
+            if (
+                active instanceof HTMLElement
+                && (isTextEntryTarget(active) || Boolean(active.closest('[data-folia-keyboard-window="true"], [data-folia-settings-panel="true"], [data-folia-studio-window="true"]')))
+            ) {
+                return;
+            }
+            containerRef.current?.focus({ preventScroll: true });
+        };
+        const rafId = requestAnimationFrame(focusContainer);
+        return () => cancelAnimationFrame(rafId);
+    }, [isInteractive, showCutInPanel, showFullBio, showSidePanel]);
 
     // 切换 suite 之前，切换器会让当前歌手页把焦点写回会话。写的是已提交的焦点，不是拖拽帧循环里的值。
     const committedFocusIndexRef = useRef(focusedIndex);
@@ -1313,6 +1338,8 @@ const ArtistGridView: React.FC<ArtistGridViewProps> = ({
             {/* Header Area */}
             <div className="absolute top-0 left-0 p-6 z-30 flex items-center gap-4">
                 <button
+                    type="button"
+                    data-tv-nav="grid-back"
                     // 返回按钮表示看完了（onDone）：宿主清掉浏览会话、让每套 suite 忘掉布局记录，再返回
                     // （Escape 与浏览器后退保留）。P4.5 起这条语义在宿主，不在这里清。
                     onClick={onDone}
@@ -1352,6 +1379,7 @@ const ArtistGridView: React.FC<ArtistGridViewProps> = ({
             >
                 <button
                     type="button"
+                    data-tv-nav="grid-title"
                     className="flex items-center gap-1.5 text-lg font-bold tracking-tight cursor-pointer"
                     aria-expanded={showCutInPanel}
                 >
@@ -1397,6 +1425,8 @@ const ArtistGridView: React.FC<ArtistGridViewProps> = ({
             {/* Draggable Viewport Canvas */}
             <div
                 ref={containerRef}
+                tabIndex={-1}
+                data-tv-grid-surface="true"
                 onPointerDown={(event) => {
                     if (event.button !== 0) return;
                     const target = event.target as HTMLElement;

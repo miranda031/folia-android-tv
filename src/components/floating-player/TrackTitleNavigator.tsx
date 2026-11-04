@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTrackTitlePreview, type TrackNavSide } from '../../hooks/useTrackTitlePreview';
 import { usePlayerChromeSettingsStore } from '../../stores/usePlayerChromeSettingsStore';
+import { isAndroidTv } from '../../platform/runtime';
 // src/components/floating-player/TrackTitleNavigator.tsx
 
 const PREVIEW_OPACITY = 0.55;
@@ -58,13 +59,14 @@ const TrackTitleNavigator: React.FC<TrackTitleNavigatorProps> = ({
         beginSwitch,
     } = useTrackTitlePreview({ title, trackKey, prevTitle, nextTitle, disabled });
     const alwaysShowArrows = usePlayerChromeSettingsStore(state => state.alwaysShowTrackSwitchButtons);
+    const tvMode = isAndroidTv();
 
     const isPreview = previewTitle !== null;
     const zoneClass = 'absolute inset-y-0 flex items-center';
     const arrowClass = [
         'pointer-events-auto flex h-6 w-6 items-center justify-center rounded-full',
         'transition-opacity duration-200 hover:opacity-100!',
-        alwaysShowArrows ? 'opacity-70' : 'opacity-0 group-hover/title:opacity-70',
+        alwaysShowArrows || tvMode ? 'opacity-75' : 'opacity-0 group-hover/title:opacity-70',
         isDaylight ? 'hover:bg-black/10' : 'hover:bg-white/15',
     ].join(' ');
     const textClass = 'w-full truncate text-center text-sm font-bold';
@@ -81,6 +83,7 @@ const TrackTitleNavigator: React.FC<TrackTitleNavigatorProps> = ({
         return (
             <button
                 type="button"
+                data-tv-nav={side === 'prev' ? 'player-prev' : 'player-next'}
                 data-folia-track-title-arrow={side}
                 aria-label={label}
                 title={target || label}

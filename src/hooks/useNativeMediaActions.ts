@@ -6,6 +6,8 @@ type NativeMediaActions = {
   toggle: () => void | Promise<void>;
   next: () => void | Promise<void>;
   previous: () => void | Promise<void>;
+  seekForward?: () => void | Promise<void>;
+  seekBackward?: () => void | Promise<void>;
 };
 
 export const useNativeMediaActions = (actions: NativeMediaActions) => {
@@ -17,8 +19,10 @@ export const useNativeMediaActions = (actions: NativeMediaActions) => {
       else if (action === 'toggle') void actions.toggle();
       else if (action === 'next') void actions.next();
       else if (action === 'previous') void actions.previous();
+      else if (action === 'seekForward') void actions.seekForward?.();
+      else if (action === 'seekBackward') void actions.seekBackward?.();
     };
     window.addEventListener('folia-native-media-action', listener);
     return () => window.removeEventListener('folia-native-media-action', listener);
-  }, [actions.next, actions.pause, actions.play, actions.previous, actions.toggle]);
+  }, [actions.next, actions.pause, actions.play, actions.previous, actions.seekBackward, actions.seekForward, actions.toggle]);
 };

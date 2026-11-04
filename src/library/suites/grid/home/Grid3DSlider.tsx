@@ -7,6 +7,7 @@ import { useHomeLayoutSettingsStore } from '../../../../stores/useHomeLayoutSett
 import { useReducedMotionFor } from '../../../../hooks/useReducedMotionFor';
 import { hasBlockingWindow } from '../../../../utils/keyboardTargets';
 import { CARD_TITLE_ATTR, MORPH_FRAME_ATTR } from '../transitions/gridMorphContract';
+import { isAndroidTv } from '../../../../platform/runtime';
 
 // src/library/suites/grid/home/Grid3DSlider.tsx
 // Controlled desktop Grid3D slider shared by Netease, local music, and Navidrome overview surfaces.
@@ -819,8 +820,23 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
                                 <div
                                     key={item.id}
                                     data-grid3d-index={index}
+                                    data-tv-nav={isAndroidTv() ? "card" : undefined}
+                                    tabIndex={isAndroidTv() ? 0 : -1}
+                                    role={isAndroidTv() ? "button" : undefined}
+                                    aria-label={typeof displayName === 'string' ? displayName : undefined}
                                     className="shrink-0 cursor-pointer pointer-events-auto select-none"
                                     style={{ marginRight: index < items.length - 1 ? GRID3D_CARD_GAP : 0 }}
+                                    onFocus={() => {
+                                        if (isAndroidTv()) {
+                                            scrollToIndex(index);
+                                        }
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (isAndroidTv() && (e.key === 'Enter' || e.key === ' ')) {
+                                            e.preventDefault();
+                                            onSelect(item, index);
+                                        }
+                                    }}
                                     onClick={() => {
                                         if (!isInteractive || dragDistanceRef.current >= 8) return;
                                         if (isFocused) {
@@ -829,7 +845,7 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
                                             scrollToIndex(index);
                                         }
                                     }}
-                                	>
+                                >
                                     {grid3dCardStyle === 'image' ? (
                                         <div
                                             className={`aspect-square rounded-2xl overflow-hidden shadow-2xl relative border border-white/10 ${

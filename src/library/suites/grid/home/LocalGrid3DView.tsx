@@ -187,6 +187,8 @@ export const LocalGrid3DView: React.FC<LocalGrid3DViewProps> = ({
                 <p className="text-lg">{t('localMusic.noLocalMusic')}</p>
                 <div className="flex flex-wrap items-center justify-center gap-3">
                     <button
+                        type="button"
+                        data-tv-nav="local-import"
                         onClick={() => void homeActions.importFolder()}
                         disabled={importBusy}
                         className="px-6 py-3 rounded-full transition-colors text-sm flex items-center gap-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -196,6 +198,8 @@ export const LocalGrid3DView: React.FC<LocalGrid3DViewProps> = ({
                     </button>
                     {actionState.deviceScanAvailable ? (
                         <button
+                            type="button"
+                            data-tv-nav="local-scan"
                             onClick={() => void homeActions.scanDeviceMusic()}
                             disabled={importBusy && !actionState.scanningDevice}
                             className="px-6 py-3 rounded-full transition-colors text-sm flex items-center gap-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed"

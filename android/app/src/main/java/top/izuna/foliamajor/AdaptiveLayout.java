@@ -33,6 +33,10 @@ final class AdaptiveLayout {
         return prefs(context).getBoolean(KEY_ADAPTIVE_LAYOUT, false);
     }
 
+    static boolean hasExplicitPreference(Context context) {
+        return prefs(context).contains(KEY_ADAPTIVE_LAYOUT);
+    }
+
     static void setEnabled(Context context, boolean enabled) {
         prefs(context).edit().putBoolean(KEY_ADAPTIVE_LAYOUT, enabled).apply();
     }

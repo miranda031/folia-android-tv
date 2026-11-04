@@ -71,7 +71,8 @@ import type { CollectionResource } from '../../../core/shared/resource.contract'
 import type { CollectionMutationController, LibraryMutationResult } from '../../../core/collection/mutations/mutations.contract';
 import type { LibraryDeclaredActions } from '../../../core/suite/suite.contract';
 import { useSidePanelBottomPx } from '../../../../hooks/usePlayerBottomBarBottomPx';
-import { hasBlockingWindow } from '../../../../utils/keyboardTargets';
+import { hasBlockingWindow, isTextEntryTarget } from '../../../../utils/keyboardTargets';
+import { isAndroidTv } from '../../../../platform/runtime';
 import { useGridViewSettingsStore } from '../../../../stores/useGridViewSettingsStore';
 import { useAndroidLayoutSettingsStore } from '../../../../stores/useAndroidLayoutSettingsStore';
 import { collectionKey } from '../../../core/collection/collectionIdentity';
@@ -1434,6 +1435,12 @@ export const GridView: React.FC<GridViewProps> = ({
 
                 if (bestNextIdx !== focusedIndex) {
                     centerOnIndex(bestNextIdx, true);
+                } else if (e.key === 'ArrowUp' && isAndroidTv()) {
+                    const root = containerRef.current?.parentElement;
+                    const headerBtn = root?.querySelector<HTMLElement>(
+                        '[data-tv-nav="grid-title"]:not([aria-disabled="true"]), [data-tv-nav="grid-back"]',
+                    );
+                    headerBtn?.focus({ preventScroll: true });
                 }
             }
         };
@@ -1458,6 +1465,24 @@ export const GridView: React.FC<GridViewProps> = ({
         showCutInPanel,
         showSidePanel,
     ]);
+
+    useEffect(() => {
+        if (!isActive || showSidePanel || showCutInPanel || isPlaylistPickerOpen || isCreatePlaylistOpen || isDeleteFolderOpen) {
+            return;
+        }
+        const focusContainer = () => {
+            const active = document.activeElement;
+            if (
+                active instanceof HTMLElement
+                && (isTextEntryTarget(active) || Boolean(active.closest('[data-folia-keyboard-window="true"], [data-folia-settings-panel="true"], [data-folia-studio-window="true"]')))
+            ) {
+                return;
+            }
+            containerRef.current?.focus({ preventScroll: true });
+        };
+        const rafId = requestAnimationFrame(focusContainer);
+        return () => cancelAnimationFrame(rafId);
+    }, [isActive, isCreatePlaylistOpen, isDeleteFolderOpen, isPlaylistPickerOpen, showCutInPanel, showSidePanel]);
 
     const progressiveLoading = deriveProgressiveLoadingState(
         gridItems.length,
@@ -1646,6 +1671,8 @@ export const GridView: React.FC<GridViewProps> = ({
 
             {/* Back Button */}
             <button
+                type="button"
+                data-tv-nav="grid-back"
                 // 返回按钮表示看完了（onDone）：宿主清掉浏览会话、让每套 suite 忘掉布局记录（网格的 sessionStorage
                 // 记录经 entry 的 layout.forget），再返回。Escape 与浏览器后退保留（onBack）。P4.5 起不在这里清。
                 onClick={onDone}
@@ -1681,6 +1708,10 @@ export const GridView: React.FC<GridViewProps> = ({
 
             {/* Center Clickable Area */}
             <div
+                role={hasCutInPanel ? 'button' : undefined}
+                tabIndex={hasCutInPanel ? 0 : undefined}
+                aria-disabled={!hasCutInPanel || undefined}
+                data-tv-nav={hasCutInPanel ? 'grid-title' : undefined}
                 onClick={() => {
                     if (!hasCutInPanel) return;
                     setShowCutInPanel(!showCutInPanel);
@@ -1705,6 +1736,8 @@ export const GridView: React.FC<GridViewProps> = ({
             {/* Honeycomb Drag/Viewport Canvas Area */}
             <div
                 ref={containerRef}
+                tabIndex={-1}
+                data-tv-grid-surface="true"
                 data-folia-grid-canvas="true"
                 onPointerDown={(event) => {
                     if (event.button !== 0) return; // 仅限鼠标左键或主要指针拖动

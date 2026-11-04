@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { CircleHelp, Search, X, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDragToScroll } from '../../../../hooks/useDragToScroll';
+import { isAndroidTv } from '../../../../platform/runtime';
 import type { SettingsNavGroup, SettingsSectionId } from './settingsNavModel';
 // src/components/modal/settings/navigation/SettingsSideList.tsx
 // The settings' side list: a search field, then the categories under their group names, and Help at
@@ -42,11 +43,22 @@ export const SettingsSideList: React.FC<SettingsSideListProps> = ({
             onSubmitQuery();
             return;
         }
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            const firstBtn = stripRef.current?.querySelector<HTMLButtonElement>('button[data-tv-nav="settings-side"]');
+            firstBtn?.focus();
+            return;
+        }
         // The first Escape clears the query; only an empty box lets it through to close the dialog.
-        if (event.key === 'Escape' && query) {
+        if (event.key === 'Escape') {
             event.preventDefault();
             event.stopPropagation();
-            onQueryChange('');
+            if (query) {
+                onQueryChange('');
+            }
+            const activeBtn = stripRef.current?.querySelector<HTMLButtonElement>('button[aria-current="page"]')
+                || stripRef.current?.querySelector<HTMLButtonElement>('button[data-tv-nav="settings-side"]');
+            activeBtn?.focus();
         }
     };
 
@@ -56,6 +68,8 @@ export const SettingsSideList: React.FC<SettingsSideListProps> = ({
             <button
                 key={id}
                 type="button"
+                data-tv-nav="settings-side"
+                data-settings-side-id={id}
                 aria-current={isActive ? 'page' : undefined}
                 onClick={() => {
                     if (!isWide && hasDragged()) return;
@@ -69,30 +83,35 @@ export const SettingsSideList: React.FC<SettingsSideListProps> = ({
         );
     };
 
+    const isTv = isAndroidTv();
+
     return (
         <aside className="flex min-h-0 shrink-0 flex-col border-b border-[var(--st-line)] bg-[var(--st-side)] px-3 pb-2 pt-3 md:border-b-0 md:border-r md:px-2.5 md:pb-2.5 md:pt-3.5">
-            <label className="flex h-8 shrink-0 items-center gap-2 rounded-lg border border-transparent bg-[var(--st-fill)] px-2.5 text-[color:var(--st-t3)] transition-colors focus-within:border-[var(--st-line2)]">
-                <Search size={14} className="shrink-0" />
-                <input
-                    type="search"
-                    value={query}
-                    onChange={event => onQueryChange(event.target.value)}
-                    onKeyDown={handleSearchKeyDown}
-                    placeholder={t('options.settingsSearchPlaceholder')}
-                    aria-label={t('options.settingsSearchPlaceholder')}
-                    className="min-w-0 flex-1 bg-transparent text-[13px] text-[color:var(--st-t1)] outline-none placeholder:text-[color:var(--st-t3)] [&::-webkit-search-cancel-button]:hidden"
-                />
-                {query && (
-                    <button
-                        type="button"
-                        onClick={() => onQueryChange('')}
-                        aria-label={t('options.settingsSearchClear')}
-                        className="shrink-0 transition-colors hover:text-[color:var(--st-t1)]"
-                    >
-                        <X size={14} />
-                    </button>
-                )}
-            </label>
+            {!isTv && (
+                <label className="flex h-8 shrink-0 items-center gap-2 rounded-lg border border-transparent bg-[var(--st-fill)] px-2.5 text-[color:var(--st-t3)] transition-colors focus-within:border-[var(--st-line2)]">
+                    <Search size={14} className="shrink-0" />
+                    <input
+                        type="search"
+                        data-tv-nav="settings-search"
+                        value={query}
+                        onChange={event => onQueryChange(event.target.value)}
+                        onKeyDown={handleSearchKeyDown}
+                        placeholder={t('options.settingsSearchPlaceholder')}
+                        aria-label={t('options.settingsSearchPlaceholder')}
+                        className="min-w-0 flex-1 bg-transparent text-[13px] text-[color:var(--st-t1)] outline-none placeholder:text-[color:var(--st-t3)] [&::-webkit-search-cancel-button]:hidden"
+                    />
+                    {query && (
+                        <button
+                            type="button"
+                            onClick={() => onQueryChange('')}
+                            aria-label={t('options.settingsSearchClear')}
+                            className="shrink-0 transition-colors hover:text-[color:var(--st-t1)]"
+                        >
+                            <X size={14} />
+                        </button>
+                    )}
+                </label>
+            )}
             <nav
                 ref={stripRef}
                 {...(isWide ? {} : handlers)}

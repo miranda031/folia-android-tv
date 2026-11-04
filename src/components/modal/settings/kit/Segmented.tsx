@@ -38,6 +38,7 @@ export const Segmented = <T extends string>({ value, options, onChange, fill, di
                     <button
                         key={option.value}
                         type="button"
+                        data-tv-nav="settings-choice"
                         aria-pressed={selected}
                         disabled={disabled || option.disabled}
                         onClick={() => {

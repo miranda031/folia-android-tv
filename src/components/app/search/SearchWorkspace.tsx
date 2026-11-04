@@ -101,6 +101,7 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
         <AnimatePresence>
             {isSearchOpen && (
                 <motion.section
+                    data-folia-search-workspace="true"
                     initial={{ opacity: 0, y: 28 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 28 }}
@@ -139,6 +140,7 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
                             </form>
                             <button
                                 type="button"
+                                data-tv-nav="search-close"
                                 onClick={onClose}
                                 className={`rounded-full p-3 ${
                                     isDaylight ? 'bg-black/5 hover:bg-black/10' : 'bg-white/10 hover:bg-white/15'

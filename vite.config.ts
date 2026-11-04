@@ -240,7 +240,6 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
               {
                 name: 'lucide-icons',
                 test: /[\\/]node_modules[\\/]lucide-react[\\/]dist[\\/]esm[\\/]icons[\\/]/,
-                minShareCount: 2,
               },
             ],
           },

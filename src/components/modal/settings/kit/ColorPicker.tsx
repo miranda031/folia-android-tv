@@ -2,6 +2,13 @@ import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { hexToHsv, hsvToHex, isHexColorStart, parseHexColor, type Hsv } from './hexColor';
 import { FIELD_CLASS } from './TextField';
+import { isAndroidTv } from '../../../../platform/runtime';
+
+const TV_FALLBACK_SWATCHES = [
+    '#0c0d12', '#1a1228', '#081712', '#1a090e',
+    '#ffffff', '#f59e0b', '#10b981', '#38bdf8',
+    '#f43f5e', '#a855f7', '#ec4899', '#06b6d4',
+];
 
 // src/components/modal/settings/kit/ColorPicker.tsx
 // The app's colour picker: an area for saturation and value, a line for the hue, a HEX field with
@@ -123,15 +130,17 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ value, onChange, onDra
         }
     };
 
+    const tvMode = isAndroidTv();
     const typedWrong = typed !== null && !isHexColorStart(typed);
     const handleClass = `pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full${at.glide ? ' st-t-move transition-[left,top]' : ''}`;
-    const offered = Array.from(new Set(swatches.flatMap(swatch => parseHexColor(swatch) ?? []))).slice(0, SWATCH_LIMIT);
+    const rawSwatches = swatches.length > 0 ? swatches : (tvMode ? TV_FALLBACK_SWATCHES : []);
+    const offered = Array.from(new Set(rawSwatches.flatMap(swatch => parseHexColor(swatch) ?? []))).slice(0, SWATCH_LIMIT);
 
     return (
         <div role="group" aria-label={label} className="flex flex-col gap-3">
             <div
                 role="slider"
-                tabIndex={0}
+                tabIndex={tvMode ? -1 : 0}
                 aria-label={t('options.settingsColorArea')}
                 aria-valuemin={0}
                 aria-valuemax={100}
@@ -151,7 +160,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ value, onChange, onDra
                 }}
                 className="relative cursor-crosshair touch-none select-none rounded-lg"
                 style={{
-                    height: areaHeight,
+                    height: tvMode ? Math.min(areaHeight, 128) : areaHeight,
                     background: `linear-gradient(to top, #000, rgba(0, 0, 0, 0)), linear-gradient(to right, #fff, rgba(255, 255, 255, 0)), hsl(${at.h} 100% 50%)`,
                 }}
             >
@@ -161,34 +170,84 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ value, onChange, onDra
                 />
             </div>
 
-            <div
-                role="slider"
-                tabIndex={0}
-                aria-label={t('options.settingsColorHue')}
-                aria-valuemin={0}
-                aria-valuemax={360}
-                aria-valuenow={Math.round(at.h)}
-                aria-valuetext={`${Math.round(at.h)}°`}
-                {...dragBy(x => ({ h: x * 360, s: at.s, v: at.v }))}
-                onKeyDown={(event) => {
-                    const step = event.shiftKey ? 10 : 1;
-                    stepBy(event, {
-                        ArrowLeft: { ...at, h: clamp(at.h - step, 360) },
-                        ArrowDown: { ...at, h: clamp(at.h - step, 360) },
-                        ArrowRight: { ...at, h: clamp(at.h + step, 360) },
-                        ArrowUp: { ...at, h: clamp(at.h + step, 360) },
-                        Home: { ...at, h: 0 },
-                        End: { ...at, h: 360 },
-                    });
-                }}
-                className="relative h-3 cursor-pointer touch-none select-none rounded-full"
-                style={{ background: 'linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)' }}
-            >
-                <span
-                    className={`${handleClass} top-1/2 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.2),0_1px_3px_rgba(0,0,0,0.4)]`}
-                    style={{ left: `${(at.h / 360) * 100}%` }}
-                />
-            </div>
+            {tvMode ? (
+                <div className="flex flex-col gap-2">
+                    <label className="flex items-center gap-2.5 text-xs text-[color:var(--st-t2)]">
+                        <span className="w-10 shrink-0">{t('options.settingsColorHue')}</span>
+                        <input
+                            type="range"
+                            data-tv-nav="color-slider"
+                            min={0}
+                            max={360}
+                            step={4}
+                            value={Math.round(at.h)}
+                            aria-label={t('options.settingsColorHue')}
+                            onChange={e => move({ ...at, h: clamp(Number(e.target.value), 360) }, true)}
+                            className="h-2.5 min-w-0 flex-1 accent-[var(--st-accent)]"
+                        />
+                        <span className="w-9 shrink-0 text-right font-mono text-[11px]">{Math.round(at.h)}°</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 text-xs text-[color:var(--st-t2)]">
+                        <span className="w-10 shrink-0">S</span>
+                        <input
+                            type="range"
+                            data-tv-nav="color-slider"
+                            min={0}
+                            max={100}
+                            step={4}
+                            value={Math.round(at.s * 100)}
+                            aria-label="Saturation"
+                            onChange={e => move({ ...at, s: clamp(Number(e.target.value) / 100, 1) }, true)}
+                            className="h-2.5 min-w-0 flex-1 accent-[var(--st-accent)]"
+                        />
+                        <span className="w-9 shrink-0 text-right font-mono text-[11px]">{Math.round(at.s * 100)}%</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 text-xs text-[color:var(--st-t2)]">
+                        <span className="w-10 shrink-0">V</span>
+                        <input
+                            type="range"
+                            data-tv-nav="color-slider"
+                            min={0}
+                            max={100}
+                            step={4}
+                            value={Math.round(at.v * 100)}
+                            aria-label="Brightness"
+                            onChange={e => move({ ...at, v: clamp(Number(e.target.value) / 100, 1) }, true)}
+                            className="h-2.5 min-w-0 flex-1 accent-[var(--st-accent)]"
+                        />
+                        <span className="w-9 shrink-0 text-right font-mono text-[11px]">{Math.round(at.v * 100)}%</span>
+                    </label>
+                </div>
+            ) : (
+                <div
+                    role="slider"
+                    tabIndex={0}
+                    aria-label={t('options.settingsColorHue')}
+                    aria-valuemin={0}
+                    aria-valuemax={360}
+                    aria-valuenow={Math.round(at.h)}
+                    aria-valuetext={`${Math.round(at.h)}°`}
+                    {...dragBy(x => ({ h: x * 360, s: at.s, v: at.v }))}
+                    onKeyDown={(event) => {
+                        const step = event.shiftKey ? 10 : 1;
+                        stepBy(event, {
+                            ArrowLeft: { ...at, h: clamp(at.h - step, 360) },
+                            ArrowDown: { ...at, h: clamp(at.h - step, 360) },
+                            ArrowRight: { ...at, h: clamp(at.h + step, 360) },
+                            ArrowUp: { ...at, h: clamp(at.h + step, 360) },
+                            Home: { ...at, h: 0 },
+                            End: { ...at, h: 360 },
+                        });
+                    }}
+                    className="relative h-3 cursor-pointer touch-none select-none rounded-full"
+                    style={{ background: 'linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)' }}
+                >
+                    <span
+                        className={`${handleClass} top-1/2 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.2),0_1px_3px_rgba(0,0,0,0.4)]`}
+                        style={{ left: `${(at.h / 360) * 100}%` }}
+                    />
+                </div>
+            )}
 
             <div className="flex items-center gap-2">
                 <span aria-hidden className="h-8 w-8 shrink-0 rounded-lg shadow-[inset_0_0_0_1px_var(--st-line2)]" style={{ backgroundColor: at.hex }} />

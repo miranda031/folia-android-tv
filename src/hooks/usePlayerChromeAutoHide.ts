@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type React from 'react';
 import type { PlayerChromeVisibilityMode } from '../types/remoteControl';
+import { isAndroidTv } from '../platform/runtime';
 
 // src/hooks/usePlayerChromeAutoHide.ts
 // Coordinates persisted player-chrome modes with the legacy auto-hide setting.
@@ -113,9 +114,11 @@ export const usePlayerChromeAutoHide = ({
             }, delay);
         };
 
+        const hideDelayMs = isAndroidTv() ? 6000 : 3000;
+
         const showAndResetTimer = () => {
             setIsPlayerChromeHidden(false);
-            scheduleAutoHide(3000);
+            scheduleAutoHide(hideDelayMs);
         };
 
         const handleMouseOut = (event: MouseEvent) => {
@@ -171,6 +174,7 @@ export const usePlayerChromeAutoHide = ({
             return clearAutoHideTimer;
         }
 
+        const isTv = isAndroidTv();
         showAndResetTimer();
         window.addEventListener('mouseout', handleMouseOut);
         window.addEventListener('mousemove', handleMouseMove);
@@ -179,6 +183,9 @@ export const usePlayerChromeAutoHide = ({
         window.addEventListener('pointercancel', handlePointerUp);
         window.addEventListener('wheel', showAndResetTimer, { passive: true });
         window.addEventListener('blur', handleWindowBlur);
+        if (isTv) {
+            window.addEventListener('keydown', showAndResetTimer, { capture: true });
+        }
 
         return () => {
             clearAutoHideTimer();
@@ -193,6 +200,9 @@ export const usePlayerChromeAutoHide = ({
             window.removeEventListener('pointercancel', handlePointerUp);
             window.removeEventListener('wheel', showAndResetTimer);
             window.removeEventListener('blur', handleWindowBlur);
+            if (isTv) {
+                window.removeEventListener('keydown', showAndResetTimer, { capture: true });
+            }
         };
     }, [playerChromeVisibilityMode, suppressPointerReveal, setIsPlayerChromeHidden]);
 

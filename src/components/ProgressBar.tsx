@@ -2,6 +2,7 @@ import React, { useCallback, useLayoutEffect, useRef } from 'react';
 import { MotionValue, useMotionValueEvent } from 'framer-motion';
 import { FoliumProgressButtons, FoliumProgressLayers, useFoliumProgressContext } from '../mods/folium/registries/progress';
 import { getProgressFillStep, getProgressFillStepFraction } from './progressFillStep';
+import { isAndroidTv } from '../platform/runtime';
 
 // Folium public parts (mods/README.md): `data-folium-part` marks what mod CSS may
 // restyle — progress.root / track / fill / thumb / time / duration. Colors come
@@ -224,8 +225,9 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
                 <input
                     ref={inputRef}
                     type="range"
+                    data-tv-nav="player-progress"
                     min={0} max={duration || 100}
-                    step={0.1}
+                    step={isAndroidTv() ? 5 : 0.1}
                     disabled={disabled}
                     defaultValue={0}
                     onPointerDown={handleSeekStart}

@@ -18,6 +18,8 @@ import { beatImpact, downbeatImpact } from '../../../../stores/motionSignals';
 import { getBeatEffectStrength, isBeatFxReady } from '../../../../services/beatFx/beatFxLive';
 import { BEAT_EFFECT_IDS } from '../../../../services/beatFx/beatEffects';
 import { getActiveTransitionCue } from '../../../../services/automix/transitionCue';
+import { isAndroidTv } from '../../../../platform/runtime';
+import { useTvShaderBudget } from '../../../../services/tvPerformanceProfile';
 
 // src/components/visualizer/backgrounds/latent/LatentBackground.tsx
 // Layers two cover-colored Paper shaders and drives their uniforms without React frame updates.
@@ -167,8 +169,14 @@ const LatentBackground: React.FC<LatentBackgroundProps> = ({
     const loopKickRef = useRef<(() => void) | null>(null);
     const [coverColors, setCoverColors] = useState<string[]>([]);
     const tuning = tuningOverride ?? DEFAULT_LATENT_BACKGROUND_TUNING;
-    const showDithering = tuning.displayMode !== 'mesh';
+    const isTv = isAndroidTv();
+    const tvBudget = useTvShaderBudget();
     const showMesh = tuning.displayMode !== 'dithering';
+    // 电视中低配档位下，当 MeshGradient 开启时跳过第二层全屏 soft-light Dithering WebGL 着色器，省掉整整一个 WebGL 上下文与 TBDR 全屏读回混合
+    const showDithering = tuning.displayMode !== 'mesh' && (!isTv || !showMesh || tvBudget.allowDualShaderBlend);
+    const shaderMinPixelRatio = isTv ? tvBudget.minPixelRatio : 1;
+    const shaderMaxPixels = isTv ? tvBudget.maxPixels : MAX_SHADER_PIXELS;
+    const allowMeshCssFilter = !isTv || tvBudget.allowPerFrameCssFilter;
     pausedRef.current = paused;
     // A copy mounted for a change of type is ready once the cover's colours are read.
     const colorsDrawn = useFirstFrameDrawn();
@@ -349,7 +357,11 @@ const LatentBackground: React.FC<LatentBackgroundProps> = ({
                 writeLayerStyle(ditheringLayerRef.current, 'transform', `scale(${1.015 + smoothedBass * 0.025})`);
             }
             if (meshLayerRef.current) {
-                writeLayerStyle(meshLayerRef.current, 'filter', `saturate(${1.04 + smoothedMid * 0.34}) brightness(${0.94 + smoothedPower * 0.16})`);
+                if (allowMeshCssFilter) {
+                    writeLayerStyle(meshLayerRef.current, 'filter', `saturate(${1.04 + smoothedMid * 0.34}) brightness(${0.94 + smoothedPower * 0.16})`);
+                } else {
+                    writeLayerStyle(meshLayerRef.current, 'filter', 'none');
+                }
                 writeLayerStyle(meshLayerRef.current, 'transform', `scale(${1.025 + smoothedPower * 0.018})`);
             }
             // 暂停且缓动已停稳后不再往下跑：把这一帧的后续帧撤掉，省掉每帧的 JS 归一化与样式写入。
@@ -372,7 +384,7 @@ const LatentBackground: React.FC<LatentBackgroundProps> = ({
             loopKickRef.current = null;
             cancelAnimationFrame(animationFrame);
         };
-    }, [audioBands, audioPower, showMesh, staticMode, tuning]);
+    }, [allowMeshCssFilter, audioBands, audioPower, showMesh, staticMode, tuning]);
 
     // 暂停时上面这个循环会自行停下；恢复播放要把下一帧重新踢起来（它不会自己醒来）。
     useEffect(() => {
@@ -402,8 +414,8 @@ const LatentBackground: React.FC<LatentBackgroundProps> = ({
                         grainMixer={0}
                         grainOverlay={0.01}
                         speed={staticMode ? 0 : tuning.meshSpeed}
-                        minPixelRatio={1}
-                        maxPixelCount={MAX_SHADER_PIXELS}
+                        minPixelRatio={shaderMinPixelRatio}
+                        maxPixelCount={shaderMaxPixels}
                         webGlContextAttributes={PAPER_SHADER_CONTEXT_ATTRIBUTES}
                         style={{ width: '100%', height: '100%' }}
                     />
@@ -430,8 +442,8 @@ const LatentBackground: React.FC<LatentBackgroundProps> = ({
                         type="4x4"
                         size={tuning.ditheringSize}
                         speed={staticMode ? 0 : tuning.ditheringSpeed}
-                        minPixelRatio={1}
-                        maxPixelCount={MAX_SHADER_PIXELS}
+                        minPixelRatio={shaderMinPixelRatio}
+                        maxPixelCount={shaderMaxPixels}
                         webGlContextAttributes={PAPER_SHADER_CONTEXT_ATTRIBUTES}
                         style={{ width: '100%', height: '100%' }}
                     />

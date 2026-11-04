@@ -18,6 +18,8 @@ import {
 } from './nomandShaderAdjustments';
 import { useFirstFrameDrawn } from '../../styleTransition/firstFrame';
 import { PAPER_SHADER_CONTEXT_ATTRIBUTES } from '../../../../utils/paperShaderContext';
+import { isAndroidTv } from '../../../../platform/runtime';
+import { useTvShaderBudget } from '../../../../services/tvPerformanceProfile';
 
 // src/components/visualizer/backgrounds/nomand/NomandBackgroundLayer.tsx
 // Renders the selected Paper image shader with the current theme palette.
@@ -73,6 +75,8 @@ const NomandBackgroundLayer: React.FC<NomandBackgroundLayerProps> = ({
     const tuning = { ...DEFAULT_NOMAND_BACKGROUND_TUNING, ...tuningOverride };
     const sourceUrl = resolveNomandSourceUrl(coverUrl, monetBackgroundImage, tuning);
     const shaderRef = useRef<PaperShaderElement | null>(null);
+    const isTv = isAndroidTv();
+    const tvBudget = useTvShaderBudget();
     useShaderDrawn(shaderRef, sourceUrl ? `${sourceUrl}:${tuning.effect}` : null);
 
     if (!sourceUrl) {
@@ -92,8 +96,8 @@ const NomandBackgroundLayer: React.FC<NomandBackgroundLayerProps> = ({
             ref: shaderRef,
             image: sourceUrl,
             fit: 'cover' as const,
-            minPixelRatio: 1,
-            maxPixelCount: 1920 * 1080,
+            minPixelRatio: isTv ? tvBudget.minPixelRatio : 1,
+            maxPixelCount: isTv ? tvBudget.maxPixels : 1920 * 1080,
             webGlContextAttributes: PAPER_SHADER_CONTEXT_ATTRIBUTES,
             style: { width: '100%', height: '100%' },
         };

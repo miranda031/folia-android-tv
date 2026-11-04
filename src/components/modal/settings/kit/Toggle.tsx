@@ -17,6 +17,7 @@ export const Toggle: React.FC<ToggleProps> = ({ checked, onChange, disabled, lab
     <button
         type="button"
         role="switch"
+        data-tv-nav="settings-toggle"
         aria-checked={checked}
         {...useRowAria()}
         {...(labelledBy ? { 'aria-labelledby': labelledBy } : {})}

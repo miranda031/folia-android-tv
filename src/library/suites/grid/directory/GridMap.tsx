@@ -31,6 +31,7 @@ import { getSizedCoverUrl } from '../../../../utils/coverUrl';
 import { isHideableDirectoryItem } from '../../../core/directory/directoryVisibility';
 import { useSidePanelBottomPx } from '../../../../hooks/usePlayerBottomBarBottomPx';
 import { hasBlockingWindow, isTextEntryTarget } from '../../../../utils/keyboardTargets';
+import { isAndroidTv } from '../../../../platform/runtime';
 
 // src/library/suites/grid/directory/GridMap.tsx
 // Hexagonal honeycomb layout showing all collections (playlists, albums, radios).
@@ -885,6 +886,12 @@ export const GridMap: React.FC<GridMapProps> = ({
 
                 if (bestNextIdx !== focusedIndex) {
                     centerOnIndex(bestNextIdx, true);
+                } else if (e.key === 'ArrowUp' && isAndroidTv()) {
+                    const root = containerRef.current?.parentElement;
+                    const headerBtn = root?.querySelector<HTMLElement>(
+                        '[data-tv-nav="grid-title"]:not([disabled]), [data-tv-nav="grid-back"]',
+                    );
+                    headerBtn?.focus({ preventScroll: true });
                 }
             }
         };
@@ -978,6 +985,7 @@ export const GridMap: React.FC<GridMapProps> = ({
 
     return (
         <motion.div
+            data-folia-grid-overlay="true"
             data-ponder-page-scope={ponderPageScope}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -992,6 +1000,8 @@ export const GridMap: React.FC<GridMapProps> = ({
             {/* Top Floating Glass Header */}
             <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 py-5 z-[70] bg-gradient-to-b from-black/10 to-transparent">
                 <button
+                    type="button"
+                    data-tv-nav="grid-back"
                     onClick={onBack}
                     className="w-10 h-10 rounded-full flex items-center justify-center transition-all pointer-events-auto shadow-lg hover:scale-105 active:scale-95"
                     style={{
@@ -1004,6 +1014,7 @@ export const GridMap: React.FC<GridMapProps> = ({
 
                 <button
                     type="button"
+                    data-tv-nav="grid-title"
                     disabled={!hasCutInPanel}
                     onClick={() => {
                         if (showCutInPanel) {
@@ -1050,6 +1061,7 @@ export const GridMap: React.FC<GridMapProps> = ({
                     dragControls.start(event);
                 }}
                 tabIndex={-1}
+                data-tv-grid-surface="true"
                 className="absolute inset-0 flex items-center justify-center cursor-grab active:cursor-grabbing overflow-hidden focus:outline-none"
                 style={{ touchAction: 'none' }}
             >

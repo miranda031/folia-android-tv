@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { LibrarySuiteId } from './suite.contract';
 import { LIBRARY_SUITE_INITIAL_CHOICE } from './librarySuites';
+import { isAndroidTv } from '../../../platform/runtime';
 
 // src/library/core/suite/useLibrarySuiteStore.ts
 // 集合浏览用哪套 UI suite 展示（R3 之前是 useLibraryRendererStore 的 renderer）。
@@ -12,6 +13,16 @@ import { LIBRARY_SUITE_INITIAL_CHOICE } from './librarySuites';
 // 切换走 app/switchLibrarySuite，它会先校验。
 
 const LIBRARY_SUITE_STORAGE_KEY = 'library_suite';
+
+/**
+ * 没选过时先看到哪套 suite。
+ *
+ * 电视上默认给网格（经典）而不是 bravais 墙：墙靠拖动浏览，遥控器的方向键在墙上走不动，
+ * 网格是卡片列表，方向键与确认键都走得通。用户自己选过（存储里有记录）就以用户的选择为准。
+ */
+const initialSuite = (): LibrarySuiteId => (
+    isAndroidTv() ? 'grid' : LIBRARY_SUITE_INITIAL_CHOICE
+);
 
 const readStoredSuite = (): LibrarySuiteId | null => {
     if (typeof window === 'undefined') return null;
@@ -41,10 +52,10 @@ type LibrarySuiteState = {
 };
 
 export const useLibrarySuiteStore = create<LibrarySuiteState>(set => ({
-    suite: readStoredSuite() ?? LIBRARY_SUITE_INITIAL_CHOICE,
+    suite: readStoredSuite() ?? initialSuite(),
     setSuite: (suite) => {
         writeStoredSuite(suite);
         set({ suite });
     },
-    hydrate: () => set({ suite: readStoredSuite() ?? LIBRARY_SUITE_INITIAL_CHOICE }),
+    hydrate: () => set({ suite: readStoredSuite() ?? initialSuite() }),
 }));

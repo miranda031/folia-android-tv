@@ -17,6 +17,8 @@ import CommandPaletteAllCommandsList from './CommandPaletteAllCommandsList';
 import { setIsCommandFilterOpen } from '../../stores/useAppViewStore';
 import { isGridFilterSyntaxAvailable, resolveGridFilterAction } from './gridFilterQuery';
 import { FILTER_VIEW_COMMAND_ID } from './commands/filterViewCommand';
+import { isAndroidTv } from '../../platform/runtime';
+import { focusTvElement } from '../../utils/tvSpatialFocus';
 
 // src/components/command-palette/CommandPalette.tsx
 // Full-screen command input overlay with autocomplete and keyboard execution.
@@ -116,6 +118,21 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
     // that finds it disabled is kept, and done in the commit that enables the input again.
     const focusAskedRef = useRef(false);
     const refocusInput = useCallback(() => {
+        if (isAndroidTv()) {
+            window.requestAnimationFrame(() => {
+                const active = document.activeElement;
+                if (active && active !== document.body) return;
+                const matchBtn =
+                    document.querySelector<HTMLElement>(
+                        '[data-folia-keyboard-window="true"] [data-command-match-index="0"]:not([disabled])',
+                    )
+                    ?? document.querySelector<HTMLElement>(
+                        '[data-testid="command-palette-pinned-row"] button:not([disabled])',
+                    );
+                if (matchBtn) focusTvElement(matchBtn);
+            });
+            return;
+        }
         focusAskedRef.current = true;
         window.requestAnimationFrame(() => {
             const input = inputRef.current;
@@ -126,11 +143,64 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
         });
     }, []);
     useLayoutEffect(() => {
-        if (!isExecuting && focusAskedRef.current) {
+        if (!isExecuting && focusAskedRef.current && !isAndroidTv()) {
             focusAskedRef.current = false;
             inputRef.current?.focus();
         }
     }, [isExecuting]);
+
+    const didInitialTvFocusRef = useRef(false);
+    const hasMatches = matches.length > 0;
+    useEffect(() => {
+        if (!isOpen || !isAndroidTv()) {
+            if (!isOpen && didInitialTvFocusRef.current) {
+                didInitialTvFocusRef.current = false;
+                const restoreTimer = window.setTimeout(() => {
+                    const active = document.activeElement;
+                    if (active && active !== document.body) return;
+                    if (document.querySelector('[data-folia-settings-panel="true"], [data-folia-sheet="true"], [data-folia-search-workspace="true"]')) {
+                        return;
+                    }
+                    const trigger = document.querySelector<HTMLElement>('[data-folia-command-palette-button="true"]');
+                    if (trigger) {
+                        focusTvElement(trigger);
+                    }
+                }, 200);
+                return () => window.clearTimeout(restoreTimer);
+            }
+            didInitialTvFocusRef.current = false;
+            return undefined;
+        }
+        if (didInitialTvFocusRef.current) {
+            // 若首次打开时 matches 尚未就绪而先落在了底部或输入框，待首轮命令列表挂载后把光标对齐到第一项
+            const active = document.activeElement;
+            if (hasMatches && (!active || !active.hasAttribute('data-command-match-index')) && active !== inputRef.current) {
+                const firstMatch = document.querySelector<HTMLElement>(
+                    '[data-folia-keyboard-window="true"] [data-command-match-index="0"]:not([disabled])',
+                );
+                if (firstMatch) focusTvElement(firstMatch);
+            }
+            return undefined;
+        }
+        const timer = window.setTimeout(() => {
+            // 注意：分开按优先级查询（避免单个逗号选择器按 DOM 文档顺序提前命中顶部按钮或输入框而弹出系统输入法）
+            const candidate =
+                document.querySelector<HTMLElement>(
+                    '[data-folia-keyboard-window="true"] [data-command-match-index="0"]:not([disabled])',
+                )
+                ?? document.querySelector<HTMLElement>(
+                    '[data-testid="command-palette-pinned-row"] button:not([disabled])',
+                )
+                ?? document.querySelector<HTMLElement>(
+                    '[data-testid="command-palette-panel"] button:not([disabled])',
+                );
+            if (candidate) {
+                didInitialTvFocusRef.current = true;
+                focusTvElement(candidate);
+            }
+        }, 60);
+        return () => window.clearTimeout(timer);
+    }, [hasMatches, isOpen]);
     const [idlePlaceholderIndex, setIdlePlaceholderIndex] = useState(() => Math.floor(Math.random() * IDLE_PLACEHOLDER_COUNT));
     const [isShowingAllCommands, setIsShowingAllCommands] = useState(false);
     const surface = activeCommand?.surface ?? null;
@@ -263,6 +333,9 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
             setIsShowingAllCommands(false);
             return;
         }
+        if (isAndroidTv() && !isInlineFrame) {
+            return;
+        }
 
         const frame = window.requestAnimationFrame(() => {
             inputRef.current?.focus();
@@ -362,18 +435,24 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
             }
 
             if (event.key === 'ArrowDown') {
+                if (isAndroidTv() && !isInlineFrame) return;
                 event.preventDefault();
                 onActiveIndexChange(Math.min(matches.length - 1, activeIndex + 1));
                 return;
             }
 
             if (event.key === 'ArrowUp') {
+                if (isAndroidTv() && !isInlineFrame) return;
                 event.preventDefault();
                 onActiveIndexChange(Math.max(0, activeIndex - 1));
                 return;
             }
 
             if (event.key === 'Enter') {
+                const targetBtn = event.target instanceof Element ? event.target.closest('button') : null;
+                if (targetBtn && !targetBtn.hasAttribute('data-command-match-index')) {
+                    return;
+                }
                 event.preventDefault();
                 void onExecuteActive();
             }
@@ -381,7 +460,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [acceptSyntaxSuggestion, activeIndex, activeCommand, isComposing, isExecuting, isOpen, isShowingAllCommands, matches.length, onActiveCommandChange, onActiveIndexChange, onClose, onExecuteActive, onQueryChange, query, surface, surfaceArgs, syntaxIndex, syntaxSuggestions]);
+    }, [acceptSyntaxSuggestion, activeIndex, activeCommand, isComposing, isExecuting, isInlineFrame, isOpen, isShowingAllCommands, matches.length, onActiveCommandChange, onActiveIndexChange, onClose, onExecuteActive, onQueryChange, primaryTermOf, query, surface, surfaceArgs, syntaxIndex, syntaxSuggestions]);
 
     if (filterAnchor) {
         return (
@@ -432,7 +511,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
                             // iOS Safari blocks overflow scrolling in sibling containers
                             // when an input is focused inside a fixed + backdrop-blur panel.
                             // Blur proactively so the first touch-scroll works immediately.
-                            if ('ontouchstart' in window) {
+                            if (!isAndroidTv() && 'ontouchstart' in window) {
                                 inputRef.current?.blur();
                             }
                         }}
@@ -557,6 +636,13 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
                                             ref={isActive ? activeMatchRowRef : undefined}
                                             type="button"
                                             disabled={isExecuting}
+                                            data-command-match-index={index}
+                                            data-tv-command-active={isActive ? 'true' : undefined}
+                                            onFocus={() => {
+                                                if (!isExecuting) {
+                                                    onActiveIndexChange(index);
+                                                }
+                                            }}
                                             onMouseEnter={() => {
                                                 if (!isExecuting) {
                                                     onActiveIndexChange(index);

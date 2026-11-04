@@ -9,6 +9,8 @@ import { installFrameTimingDiagnostics } from './utils/frameTimingDiagnostics';
 import { installNativeAndroidBridge } from './services/nativeAndroidBridge';
 import { installAndroidPhoneFitPreference } from './services/androidPhoneLayout';
 import { installKeepScreenOnPreference } from './services/androidKeepScreenOn';
+import { installTvMode } from './services/tvMode';
+import { installTvPerformanceProfile } from './services/tvPerformanceProfile';
 // import { installCoverSizeAudit } from './services/debug/coverSizeSamples';
 // @ts-ignore
 globalThis.Buffer = Buffer;
@@ -35,6 +37,9 @@ installChunkLoadRecovery();
 // 帧耗时 / 长任务采样，供设置里的「复制诊断数据」判断卡顿是渲染开销还是设备性能。
 installFrameTimingDiagnostics();
 installAndroidPhoneFitPreference();
+// 电视模式：先装，其余运行时（初始资料库界面、屏幕常亮默认值、硬件自适应性能档位）才读得到这个结论。
+installTvMode();
+installTvPerformanceProfile();
 // 屏幕常亮：启动时套用保存的开关状态（安卓走原生窗口标志）。
 installKeepScreenOnPreference();
 // 原生桥：替换 fetch / 模拟扩展的 chrome.cookies / chrome.storage，所有在线请求走它。

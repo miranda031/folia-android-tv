@@ -63,6 +63,7 @@ import { resolveMachiSceneId } from './machiTuning';
 import { MACHI_SCENES } from './scenes';
 import type { MachiScene, MachiSceneContent, MachiSceneContext } from './scenes/types';
 import { reportMachiShownScene, withdrawMachiShownScene } from './shownScene';
+import { resolveVisualizerDpr } from '../../../utils/visualizerDpr';
 import type { MachiCameraView, MachiQuality, MachiSceneId, MachiTuning } from './types';
 
 // src/components/visualizer/machi/createMachiRuntime.ts
@@ -450,7 +451,7 @@ export class MachiRuntime {
     private resolveQuality(degrade = this.degrade): MachiRenderQuality {
         return resolveMachiRenderQuality(this.tuning.quality, {
             degrade,
-            devicePixelRatio: window.devicePixelRatio || 1,
+            devicePixelRatio: resolveVisualizerDpr(window.devicePixelRatio),
             previewMode: this.options.previewMode,
         });
     }

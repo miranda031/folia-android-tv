@@ -91,7 +91,12 @@ export const useNativeBackButton = (): void => {
                 bubbles: true,
                 cancelable: true,
             });
-            const handled = !window.dispatchEvent(event) || event.defaultPrevented;
+            const dispatchTarget: EventTarget = typeof document !== 'undefined'
+                ? (document.activeElement instanceof HTMLElement && document.activeElement.isConnected
+                    ? document.activeElement
+                    : (document.body ?? document))
+                : window;
+            const handled = !dispatchTarget.dispatchEvent(event) || event.defaultPrevented;
             applyNativeBackPress(plugin, handled);
         });
 

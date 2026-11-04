@@ -8,6 +8,8 @@ import { clamp, easeInOutCubic, easeOutCubic, isCJK, mix, resolveDelayedGlowEnve
 import { resolvePrintedGraphemeCount, resolveVisualProgressWithCutoff } from './fumeReveal';
 import { getActiveColor } from './fumeTextStyle';
 import { buildFontSpec, resolveRenderLineOffset, resolveSegmentGlyphAdvance, resolveSegmentGlyphOffset } from './fumeTextMeasure';
+import { isAndroidTv } from '../../../platform/runtime';
+import { getTvFumeSnapshotScale } from '../../../services/tvPerformanceProfile';
 
 // src/components/visualizer/fume/fumeCanvasText.ts
 // Canvas 2D text drawing for fume: fonts, clipped text runs and the static block snapshots.
@@ -74,7 +76,9 @@ export const createStaticBlockSnapshot = (
         return null;
     }
 
-    const rasterScale = clamp(window.devicePixelRatio || 1, 1, 2);
+    const rasterScale = isAndroidTv()
+        ? getTvFumeSnapshotScale()
+        : clamp(window.devicePixelRatio || 1, 1, 2);
     const padding = Math.ceil(Math.max(block.fontPx * 0.32, shadowBlur + block.fontPx * 0.08, 4));
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.ceil((block.width + padding * 2) * rasterScale));

@@ -6,6 +6,8 @@
 // 也不受浏览器策略限制。拿不到原生插件时退回网页的 Screen Wake Lock API（页面隐藏时浏览器会
 // 自动释放，所以可见时要重新申请）。两种运行时都不会因为失败而抛出——开关本身仍然可用。
 
+import { isAndroidTv } from '../platform/runtime';
+
 export const KEEP_SCREEN_ON_STORAGE_KEY = 'folia_android_keep_screen_on';
 
 type WakeLockSentinelLike = {
@@ -26,6 +28,20 @@ export const readStoredKeepScreenOn = (): boolean => {
         return localStorage.getItem(KEEP_SCREEN_ON_STORAGE_KEY) === 'true';
     } catch {
         return false;
+    }
+};
+
+/**
+ * 存储里没有记录时返回 null：区分「用户没设过」与「用户明确关掉了」。
+ * 电视上用得上这个区别——没设过时可以给个电视向的默认值，设过就照用户的来。
+ */
+export const readStoredKeepScreenOnOrNull = (): boolean | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+        const stored = localStorage.getItem(KEEP_SCREEN_ON_STORAGE_KEY);
+        return stored === null ? null : stored === 'true';
+    } catch {
+        return null;
     }
 };
 
@@ -108,7 +124,9 @@ export const applyKeepScreenOn = (enabled: boolean): void => {
 
 /** 启动时套用保存的设置（与 installAndroidPhoneFitPreference 同一模式）。 */
 export const installKeepScreenOnPreference = (): void => {
-    applyKeepScreenOn(readStoredKeepScreenOn());
+    const stored = readStoredKeepScreenOnOrNull();
+    // 电视上默认常亮：遥控器放着听歌时电视进屏保很扫兴。用户明确关掉过就照用户的来。
+    applyKeepScreenOn(stored ?? isAndroidTv());
 };
 
 /** 测试用：清掉当前持有的 wake lock 与监听状态。 */

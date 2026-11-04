@@ -253,7 +253,7 @@ const VisualizerCadenza: React.FC<VisualizerProps> = (props) => {
             lastFrameTimeRef.current = now;
             const width = Math.max(Math.floor(viewport.width), 1);
             const height = Math.max(Math.floor(viewport.height), 1);
-            const dpr = window.devicePixelRatio || 1;
+            const dpr = document.documentElement.classList.contains('folia-tv') ? 1 : (window.devicePixelRatio || 1);
 
             if (textCanvas.width !== Math.floor(width * dpr) || textCanvas.height !== Math.floor(height * dpr)) {
                 textCanvas.width = Math.floor(width * dpr);

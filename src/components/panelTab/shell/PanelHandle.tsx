@@ -6,6 +6,7 @@ import type { Theme } from '../../../types';
 import { usePlayerBottomBarBottomPx } from '../../../hooks/usePlayerBottomBarBottomPx';
 import { useAndroidLayoutSettingsStore } from '../../../stores/useAndroidLayoutSettingsStore';
 import { usePlayerOverlayObstacle } from '../../../hooks/usePlayerOverlayLayout';
+import { isAndroidTv } from '../../../platform/runtime';
 
 // src/components/panelTab/shell/PanelHandle.tsx
 // The round button at the bottom right of the playing page that opens the panel and, white, closes
@@ -56,7 +57,7 @@ const PanelHandle: React.FC<PanelHandleProps> = ({
     const trackFillRef = React.useRef<HTMLDivElement | null>(null);
     const canSlideOpenCommandPalette = !isOpen && Boolean(onOpenCommandPalette);
     const isGuideLineVisible = canSlideOpenCommandPalette && (showGuideLine || isPanelGuideHotspotActive);
-    const toggleButtonMotionClass = (isOpen || isGuideLineVisible || isDragging)
+    const toggleButtonMotionClass = (isOpen || isGuideLineVisible || isDragging || isAndroidTv())
         ? 'translate-x-0 opacity-100'
         : supportsHover
             ? 'translate-x-1/2 opacity-60 group-hover:translate-x-0 group-hover:opacity-100 md:translate-x-0 md:opacity-100 md:hover:scale-105'
@@ -395,6 +396,7 @@ const PanelHandle: React.FC<PanelHandleProps> = ({
                         <button
                             ref={toggleButtonRef}
                             type="button"
+                            data-tv-nav="player-panel-toggle"
                             onPointerDown={handleToggleButtonPointerDown}
                             onPointerMove={handleToggleButtonPointerMove}
                             onPointerUp={clearToggleButtonGesture}

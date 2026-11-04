@@ -35,10 +35,13 @@
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
+            android:banner="@drawable/tv_banner"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+                <!-- 电视启动器只认 LEANBACK_LAUNCHER：没有这一行，电视桌面上根本找不到这个应用。 -->
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
 
@@ -61,4 +64,11 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+
+    <!-- 电视：没有触摸屏是常态（VIDAA / Google TV 都是遥控器操作），GL 等级也随芯片而异，
+         所以这几项都声明成「不强制」，免得电视按手机应用的标准拒装。 -->
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.opengles.aep" android:required="false" />
+    <uses-feature android:glEsVersion="0x00030000" android:required="false" />
 </manifest>

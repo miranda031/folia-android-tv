@@ -478,7 +478,12 @@ public class FoliaNativePlugin extends Plugin {
             .setType("audio/*")
             .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
         isAudioPickerOpen = true;
-        startActivityForResult(call, intent, "handlePickedAudio");
+        try {
+            startActivityForResult(call, intent, "handlePickedAudio");
+        } catch (Exception error) {
+            isAudioPickerOpen = false;
+            call.reject("当前电视系统不支持系统文件选择器，请使用「扫描设备音乐」导入本地或 U 盘曲库", error);
+        }
     }
 
     /** 选择整个文件夹；原生侧递归扫描其中的音频，用户可以一次导入整张专辑/目录。 */
@@ -491,7 +496,12 @@ public class FoliaNativePlugin extends Plugin {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         isAudioPickerOpen = true;
-        startActivityForResult(call, intent, "handlePickedAudioFolder");
+        try {
+            startActivityForResult(call, intent, "handlePickedAudioFolder");
+        } catch (Exception error) {
+            isAudioPickerOpen = false;
+            call.reject("当前电视系统不支持文件夹选择器，请使用「扫描设备音乐」导入本地或 U 盘曲库", error);
+        }
     }
 
     /** 供 WebView 重建导入音频的流地址（端口每次启动都可能不同）。 */

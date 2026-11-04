@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, Loader2, Settings, PanelsTopLeft } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -8,6 +8,7 @@ import { SongResult, LocalSong, LocalPlaylist, LocalLibraryGroup, Theme, type St
 import LocalGrid3DView from './LocalGrid3DView';
 import NavidromeGrid3DView from './NavidromeGrid3DView';
 import { useGrid3DTabKeys } from './useGrid3DTabKeys';
+import { useTvHomeNavigation, type TvHomeNavItem } from './useTvHomeNavigation';
 import DesktopGrid3DSurface from './DesktopGrid3DSurface';
 import OnlineProviderAccountlessPanel from '../account/OnlineProviderAccountlessPanel';
 import HomeLoginPanel from '../../../../components/login/HomeLoginPanel';
@@ -33,6 +34,8 @@ import { useLibraryHomeDirectory } from '../../../core/home/useLibraryHomeDirect
 import { useLibraryHomeListRegistration, useLibraryHomeTabsRegistration } from '../../../core/home/useLibraryHomeSurfaceRegistration';
 import { cycleIndex } from '../../../core/home/homeSources';
 import { useUpdateIndicator } from '../../../../hooks/useUpdateIndicator';
+import { isAndroidTv } from '../../../../platform/runtime';
+import { collectTvFocusables, focusTvElement } from '../../../../utils/tvSpatialFocus';
 
 // src/library/suites/grid/home/Grid3D.tsx
 // Glassmorphic interactive desktop home view replacing the legacy 3D carousel.
@@ -187,6 +190,10 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
     const [focusedIndex, setFocusedIndex] = useState(0);
     const gridRootRef = useRef<HTMLDivElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
+    // 电视：遥控器在顶部那一行（设置、页签、搜索）里移动时，焦点落在这几个真控件上。
+    const settingsButtonRef = useRef<HTMLButtonElement>(null);
+    const searchButtonRef = useRef<HTMLButtonElement>(null);
+    const tabButtonRefs = useRef(new Map<string, HTMLButtonElement | null>());
     const [scanDetailsExpanded, setScanDetailsExpanded] = useState(false);
 
     const showUpdateIndicator = useUpdateIndicator();
@@ -274,6 +281,76 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
         });
     };
 
+    // 电视：从顶部那一行回到内容区。没有海报轨道的地方（探索页、空列表）退回整个首页容器，
+    // 否则焦点会一直留在页签上，遥控器就再也下不去了。
+    const tvExploreRoot = (): HTMLElement | null =>
+        gridRootRef.current?.querySelector<HTMLElement>('[data-explore-surface]') ?? null;
+
+    const focusTvContent = () => {
+        requestAnimationFrame(() => {
+            const root = gridRootRef.current;
+            if (!root) return;
+            const header = root.querySelector('[data-folia-home-header="true"]');
+
+            // 1. 探索页：优先落在卡片上
+            const explore = tvExploreRoot();
+            if (explore) {
+                const first = explore.querySelector<HTMLElement>('[data-explore-card]')
+                    ?? collectTvFocusables(explore)[0];
+                if (first) {
+                    focusTvElement(first);
+                    return;
+                }
+            }
+
+            // 2. 3D 海报轨道：优先落在卡片上
+            const slider = root.querySelector<HTMLElement>('[data-grid3d-slider]');
+            if (slider) {
+                const card = slider.querySelector<HTMLElement>('[data-tv-nav="card"], [data-grid3d-index][tabindex="0"]')
+                    ?? slider.querySelector<HTMLElement>('[data-grid3d-index]');
+                if (card) {
+                    focusTvElement(card);
+                    return;
+                }
+                focusTvElement(slider);
+                return;
+            }
+
+            // 3. 非海报轨道/空态：落到内容区第一个可聚焦控件（如导入按钮、扫描按钮、登录按钮等）
+            const focusables = collectTvFocusables(root).filter(el => !header?.contains(el));
+            if (focusables.length > 0) {
+                focusTvElement(focusables[0]);
+                return;
+            }
+
+            // 4. 兜底落到屏幕底栏（播放按钮、命令面板）
+            for (const item of tvBottomItems) {
+                const el = item.getElement();
+                if (el) {
+                    focusTvElement(el);
+                    return;
+                }
+            }
+        });
+    };
+
+    // 内容区的方向键：海报轨道自己会处理（它维护着自己的选中下标），探索页没有这一层，
+    // 探索页由空间导航按几何位置挪焦点；本地/空列表等非海报轨道也走空间导航。
+    const resolveTvSpatialRoot = (): HTMLElement | null => {
+        if (homeViewTab === 'explore') {
+            const explore = tvExploreRoot();
+            if (!explore) return null;
+            return collectTvFocusables(explore).length ? explore : null;
+        }
+        const root = gridRootRef.current;
+        if (root) {
+            const header = root.querySelector('[data-folia-home-header="true"]');
+            const focusables = collectTvFocusables(root).filter(el => !header?.contains(el));
+            if (focusables.length) return root;
+        }
+        return null;
+    };
+
     // Tab / Shift+Tab 在可用页签之间循环，切完把焦点交回海报轨道，和点胶囊一样。
     // Tab / Shift+Tab includes contributed pages; opening one hands keyboard focus to its own navigation.
     // Its host disables this native surface while the page is open, so subsequent Tab stays inside the page.
@@ -293,9 +370,79 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
         },
     });
 
+    // 电视：遥控器在「顶部那一行」（设置、页签、搜索）与「内容区」之间来回。
+    // 顶部那一行是可聚焦的真控件，焦点移上去就跟着换页签（和胶囊里 Tab 循环一个手感）。
+    const tvNavItems = useMemo<TvHomeNavItem[]>(() => {
+        if (!isAndroidTv()) return [];
+        const items: TvHomeNavItem[] = [
+            { id: 'settings', getElement: () => settingsButtonRef.current },
+        ];
+        for (const tab of homeTabs) {
+            if (tab.disabledReason) continue;
+            items.push({
+                id: tab.key,
+                getElement: () => tabButtonRefs.current.get(tab.key) ?? null,
+                onFocus: () => setHomeViewTab(tab.key),
+            });
+        }
+        items.push({ id: 'search', getElement: () => searchButtonRef.current });
+        return items;
+    }, [homeTabs]);
+
+    // 电视：屏幕底部那一行（左下角命令面板、底部播放控制条、右下角「正在播放」）。这两样东西渲染在首页
+    // 之外（AppOverlays），所以按标记找，而不是拿 ref。
+    const tvBottomItems = useMemo<TvHomeNavItem[]>(() => {
+        if (!isAndroidTv()) return [];
+        return [
+            {
+                id: 'palette',
+                getElement: () => {
+                    const button = document.querySelector<HTMLElement>('[data-folia-command-palette-button="true"]');
+                    if (!button || button.getAttribute('aria-hidden') === 'true') return null;
+                    return button;
+                },
+            },
+            {
+                id: 'player-bar',
+                getElement: () => {
+                    const playBtn = document.querySelector<HTMLElement>('[data-folia-player-bar-play="true"]');
+                    if (!playBtn || (playBtn instanceof HTMLButtonElement && playBtn.disabled)) return null;
+                    return playBtn;
+                },
+            },
+            {
+                id: 'now-playing',
+                getElement: () => {
+                    const card = document.querySelector<HTMLElement>('[data-toast-card]');
+                    if (!card || (card instanceof HTMLButtonElement && card.disabled)) return null;
+                    return card;
+                },
+            },
+            {
+                id: 'account-switcher',
+                getElement: () => document.querySelector<HTMLElement>('[data-tv-nav="account-switcher"]'),
+            },
+            {
+                id: 'back-to-player',
+                getElement: () => document.querySelector<HTMLElement>('[data-tv-nav="back-to-player"]'),
+            },
+        ];
+    }, []);
+
+    useTvHomeNavigation({
+        isActive: isAndroidTv() && isInteractive,
+        items: tvNavItems,
+        bottomItems: tvBottomItems,
+        resolveEnterItemId: () => homeViewTab,
+        focusContent: focusTvContent,
+        resolveSpatialRoot: resolveTvSpatialRoot,
+    });
+
     return (
         <div
             ref={gridRootRef}
+            tabIndex={-1}
+            data-tv-content="true"
             data-ponder-page-scope="grid-page"
             className={`relative w-full h-full flex flex-col font-sans overflow-hidden ${mainBg} pointer-events-auto backdrop-blur-sm ${bottomPadding}`}
         >
@@ -309,7 +456,9 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
                             Folia
                         </h1>
                         <button
-                            onClick={() => onOpenSettings?.('help')}
+                            ref={settingsButtonRef}
+                            data-tv-nav="settings"
+                            onClick={() => onOpenSettings?.('options')}
                             className={`relative flex items-center gap-1.5 p-2 rounded-full hover:bg-white/10 transition-all ml-4 ${showUpdateIndicator
                                     ? 'opacity-90 hover:opacity-100'
                                     : 'opacity-40 hover:opacity-100'
@@ -395,6 +544,10 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
                                             className="inline-flex"
                                         >
                                             <button
+                                                ref={element => {
+                                                    tabButtonRefs.current.set(tab.key, element);
+                                                }}
+                                                data-tv-nav="tab"
                                                 disabled={Boolean(tab.disabledReason)}
                                                 aria-label={tab.disabledReason || tab.label}
                                                 onClick={() => {
@@ -462,6 +615,31 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
                         <form onSubmit={handleSearch} className="relative w-full md:w-56 transition-all focus-within:md:w-72">
                             {isSearchingActive ? (
                                 <Loader2 className="absolute left-3 top-1/2 w-4 h-4 animate-spin opacity-40 -mt-2" />
+                            ) : isAndroidTv() ? (
+                                // 电视：搜索框本身不抢焦点（遥控器路过时会把系统输入法叫出来），
+                                // 放大镜做成真的按钮，确认键按到它才把焦点送进输入框。
+                                <button
+                                    type="button"
+                                    ref={searchButtonRef}
+                                    data-tv-nav="search"
+                                    onClick={() => {
+                                        const st = useSearchNavigationStore.getState();
+                                        st.restoreSearch({
+                                            query: st.searchQuery,
+                                            sourceTab: st.searchSourceTab,
+                                            returnView: 'home',
+                                        });
+                                        window.setTimeout(() => {
+                                            const wsInput = document.querySelector<HTMLInputElement>('[data-folia-search-workspace="true"] header input');
+                                            wsInput?.focus();
+                                        }, 80);
+                                    }}
+                                    className="absolute left-2 top-1/2 -translate-y-1/2 p-1 rounded-full opacity-50 hover:opacity-100 transition-opacity"
+                                    title={t('home.searchDatabase')}
+                                    aria-label={t('home.searchDatabase')}
+                                >
+                                    <Search className="w-4 h-4" />
+                                </button>
                             ) : (
                                 <Search
                                     className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40 w-4 h-4 cursor-pointer hover:opacity-100 transition-opacity"
@@ -471,6 +649,10 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
                             <input
                                 ref={searchInputRef}
                                 type="text"
+                                // 电视：输入框本身不进焦点链。遥控器路过它会把系统输入法叫出来
+                                // （半屏被键盘盖住），而且输入框里的方向键只挪光标，遥控器等于失灵。
+                                // 确认键想搜索时走放大镜按钮，它会主动把焦点送进来。
+                                tabIndex={isAndroidTv() ? -1 : undefined}
                                 placeholder={homeViewTab === 'local' ? t('home.searchLocal') : homeViewTab === 'navidrome' ? t('home.searchNavidrome') : t('home.searchDatabase')}
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
@@ -569,7 +751,7 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
                             overview={homeResources.navidromeOverview}
                             directoryKey={directoryKey}
                             declaredHomeActions={declaredActions}
-                            onOpenSettings={() => onOpenSettings?.('help')}
+                            onOpenSettings={() => onOpenSettings?.('options')}
                             onOpenGridView={onOpenGridView}
                         />
                     </div>

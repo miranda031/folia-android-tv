@@ -114,6 +114,7 @@ export const Slider: React.FC<SliderProps> = ({ value, min, max, step = 1, onCha
             <input
                 ref={inputRef}
                 type="range"
+                data-tv-nav="settings-slider"
                 {...aria}
                 aria-valuetext={text}
                 min={min}

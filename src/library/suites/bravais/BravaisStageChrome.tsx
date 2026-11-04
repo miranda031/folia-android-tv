@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { Blinds, PanelsTopLeft } from 'lucide-react';
+import { Blinds, PanelLeftOpen, PanelsTopLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { GridLocateButton } from '../../../components/app/playing-song-locator/GridLocateButton';
 import WallBackButton from '../../../components/wall/WallBackButton';
@@ -13,6 +13,8 @@ import type { LibraryWallLook } from '../../../utils/libraryWallLook';
 import { BRAVAIS_HELP_ROWS } from './bravaisHelp';
 import { nextWallLook } from './bravaisLook';
 import type { BravaisBackStep } from './bravaisBack';
+import { useBravaisSeamStore } from './bravaisSeamLevel';
+import { isAndroidTv } from '../../../platform/runtime';
 
 // src/library/suites/bravais/BravaisStageChrome.tsx
 // bravais 墙上的两颗浮层控件（实测反馈 1，设计稿 §7.5「浮层控件」），与 Lattice 共用 components/wall 的同一套：
@@ -60,6 +62,7 @@ const BravaisStageChrome: React.FC<BravaisStageChromeProps> = ({
     const { t } = useTranslation();
     const look = useLibraryWallLookStore(state => state.look);
     const setLook = useLibraryWallLookStore(state => state.setLook);
+    const seamLevel = useBravaisSeamStore(state => state.level);
     const isFmMode = usePlaybackStore(state => state.isFmMode);
 
     // 定位器正在问这一层（按钮转圈，与网格定位按钮的「正在找」同一个意思）。
@@ -78,18 +81,37 @@ const BravaisStageChrome: React.FC<BravaisStageChromeProps> = ({
         onSelect: onOpenLattice,
     } : undefined;
 
-    const entries = useCallback((): WallToolsEntry[] => [
-        { kind: 'heading', id: 'appearance', label: t('libraryBravais.toolsAppearance') },
-        {
-            kind: 'action',
-            id: 'wall-look',
-            icon: Blinds,
-            label: t('options.libraryWallLook'),
-            value: t(LOOK_LABEL_KEYS[look]),
-            keepOpen: true,
-            onSelect: () => setLook(nextWallLook(look)),
-        },
-    ], [look, setLook, t]);
+    const entries = useCallback((): WallToolsEntry[] => {
+        const list: WallToolsEntry[] = [];
+        if (seamLevel !== 'full' || isAndroidTv()) {
+            if (seamLevel !== 'full') {
+                list.push({
+                    kind: 'action',
+                    id: 'restore-seam',
+                    icon: PanelLeftOpen,
+                    label: seamLevel === 'hidden' ? t('libraryBravais.seamRestore') : t('libraryBravais.seamExpand'),
+                    onSelect: () => {
+                        const store = useBravaisSeamStore.getState();
+                        if (store.level === 'hidden') store.restore();
+                        else store.setLevel('full');
+                    },
+                });
+            }
+        }
+        list.push(
+            { kind: 'heading', id: 'appearance', label: t('libraryBravais.toolsAppearance') },
+            {
+                kind: 'action',
+                id: 'wall-look',
+                icon: Blinds,
+                label: t('options.libraryWallLook'),
+                value: t(LOOK_LABEL_KEYS[look]),
+                keepOpen: true,
+                onSelect: () => setLook(nextWallLook(look)),
+            },
+        );
+        return list;
+    }, [look, seamLevel, setLook, t]);
 
     return (
         <>

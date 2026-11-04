@@ -59,6 +59,8 @@ import { useSettingsModalStore } from '../../stores/useSettingsModalStore';
 import { setNavidromeEnabledState, useLibraryStore } from '../../stores/useLibraryStore';
 import { isDirectAiTextRuntime, useAiClientSettingsStore } from '../../stores/useAiClientSettingsStore';
 import { openAIEndpointOf } from '../../utils/openAIEndpoint';
+import { isAndroidTv } from '../../platform/runtime';
+import { focusTvElement } from '../../utils/tvSpatialFocus';
 
 const DEFAULT_OPENAI_TEMPERATURE = '0.7';
 
@@ -127,7 +129,7 @@ const hasElectronBridge = () => typeof window !== 'undefined' && Boolean((window
 
 const SettingsModal: React.FC<SettingsModalProps> = ({
     onClose,
-    initialTab = 'help',
+    initialTab = 'options',
     initialSubview = null,
     initialVisualizerSection = null,
     initialAnchor = null,
@@ -373,6 +375,34 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         landOn(initialAnchor.rowId ?? initialAnchor.id, initialAnchor.id);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialAnchor]);
+
+    useEffect(() => {
+        if (!isAndroidTv()) return;
+        const timer = window.setTimeout(() => {
+            if (document.querySelector('[data-folia-studio-window="true"]:not([inert]), [data-folia-sheet="true"]:not([inert])')) {
+                return;
+            }
+            const activeBtn = document.querySelector<HTMLButtonElement>(
+                '[data-folia-settings-panel="true"] aside button[data-tv-nav="settings-side"][aria-current="page"]'
+            ) || document.querySelector<HTMLButtonElement>(
+                '[data-folia-settings-panel="true"] aside button[data-settings-side-id="appearance"]'
+            ) || document.querySelector<HTMLButtonElement>(
+                '[data-folia-settings-panel="true"] aside button[data-tv-nav="settings-side"]'
+            );
+            if (activeBtn) {
+                focusTvElement(activeBtn);
+            }
+        }, 80);
+        return () => {
+            window.clearTimeout(timer);
+            requestAnimationFrame(() => {
+                const settingsBtn = document.querySelector<HTMLElement>('[data-tv-nav="settings"]');
+                if (settingsBtn && settingsBtn.getClientRects().length > 0 && !settingsBtn.closest('[inert], [aria-hidden="true"]')) {
+                    focusTvElement(settingsBtn);
+                }
+            });
+        };
+    }, []);
 
     // Cache State
     const [cacheSizes, setCacheSizes] = useState({
@@ -993,7 +1023,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             // Not a held key: the first press may have closed a dialog over this window.
-            if (event.key === 'Escape' && !event.repeat) {
+            if (event.key === 'Escape' && !event.repeat && !event.defaultPrevented) {
+                if (document.querySelector('[data-folia-sheet="true"]:not([inert]), .st-pop:not([inert]), [role="combobox"][aria-expanded="true"]')) {
+                    return;
+                }
                 event.preventDefault();
                 event.stopPropagation();
                 if (isWorkWindowOpen) {

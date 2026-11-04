@@ -71,7 +71,10 @@ const MAX_RESOLUTION = 2;
 const DARK_SKY = 0.5;
 const NIGHT_BACKGROUND = '#0b0d24';
 
-const resolveRenderResolution = (devicePixelRatio: number) => Math.min(MAX_RESOLUTION, Math.max(1, devicePixelRatio || 1));
+import { isAndroidTv } from '../../../platform/runtime';
+
+const resolveRenderResolution = (devicePixelRatio: number) =>
+    isAndroidTv() ? 1 : Math.min(MAX_RESOLUTION, Math.max(1, devicePixelRatio || 1));
 
 export class HanabiPixiRuntime {
     private readonly sceneCache = new PixiSceneCache<HanabiSceneEntry>({

@@ -26,6 +26,7 @@ import type { AppView, LatticeSource } from '../stores/useAppViewStore';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { resolvePlaybackSurface, usePlaybackEntryViewStore, type PlaybackEntryView } from '../stores/usePlaybackEntryViewStore';
 import { setStatusMessage } from '../stores/useStatusMessageStore';
+import { isAndroidTv } from '../platform/runtime';
 import i18n from '../i18n/config';
 
 // src/hooks/useAppNavigation.ts
@@ -466,6 +467,10 @@ export function useAppNavigation() {
     }, [pushNavigationState, resetLocalNavigationContext]);
 
     const navigateBackFromPlayer = useCallback(() => {
+        if (isAndroidTv()) {
+            navigateDirectHome();
+            return;
+        }
         const historyState = window.history.state as NavigationHistoryState | null;
         if (shouldNavigatePlayerBackThroughHistory(historyState)) {
             window.history.back();

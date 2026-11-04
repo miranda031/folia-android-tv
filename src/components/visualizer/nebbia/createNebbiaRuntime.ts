@@ -20,6 +20,8 @@ import { NebbiaDrizzleRide } from './nebbiaDrizzleRide';
 import { nebbiaFrameUniforms } from './nebbiaFrameUniforms';
 import { NebbiaSceneClock } from './nebbiaSceneClock';
 import { IS_ANDROID_WEBVIEW } from '../../../utils/platform';
+import { isAndroidTv } from '../../../platform/runtime';
+import { getTvNebbiaScale } from '../../../services/tvPerformanceProfile';
 
 // src/components/visualizer/nebbia/createNebbiaRuntime.ts
 // 雾笺的运行时：一块画布、一个 WebGL2 上下文，自己的 rAF 循环。React 外壳把歌、tuning、主题、暂停推进来，
@@ -186,8 +188,8 @@ export class NebbiaRuntime {
         this.H = Math.round(rect.height);
         // 安卓 WebView 上全屏雾/玻璃着色器在高 DPI 下明显吃 GPU：默认像素比压到约 0.5 倍，
         // 仍高于 1x CSS，雾/玻璃看不出糊；用户把「渲染分辨率」调高时仍可到 2x 上限。
-        const androidScale = IS_ANDROID_WEBVIEW ? 0.5 : 1;
-        const dpr = Math.min(2, Math.max(0.5, (window.devicePixelRatio || 1) * this.tuning.resolution * androidScale));
+        const androidScale = isAndroidTv() ? getTvNebbiaScale() : (IS_ANDROID_WEBVIEW ? 0.5 : 1);
+        const dpr = Math.min(isAndroidTv() ? 1.0 : 2, Math.max(0.45, (window.devicePixelRatio || 1) * this.tuning.resolution * androidScale));
         this.gl.resize(this.W, this.H, dpr);
         this.mask.resize(this.W, this.H);
         if (sized) {

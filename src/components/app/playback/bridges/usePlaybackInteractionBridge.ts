@@ -19,6 +19,7 @@ import { currentTime } from '../../../../stores/motionSignals';
 import { errorFields } from '../../../../utils/errorText';
 import { hifiTransport, isHifiRoute } from '../../../../services/hifi/hifiPlayback';
 import { seekHifiRoute } from '../../../hifi/hifiRouteTransport';
+import { isAndroidTv } from '../../../../platform/runtime';
 
 // src/components/app/playback/bridges/usePlaybackInteractionBridge.ts
 
@@ -38,7 +39,7 @@ export const resolvePlayerEscapeAction = ({
     isRepeat: boolean;
 }): PlayerEscapeAction => {
     if (currentView !== 'player' || hasBlockingWindow || isRepeat) return 'ignore';
-    if (isFullscreen) return 'allow-fullscreen-exit';
+    if (isFullscreen && !isAndroidTv()) return 'allow-fullscreen-exit';
     return isPanelOpen ? 'close-panel' : 'navigate-back';
 };
 
@@ -273,8 +274,25 @@ export function usePlaybackInteractionBridge({
                     break;
                 }
                 case 'Space':
+                case 'Enter':
                     // On the HiFi route `audioSrc` is null: mpv has the song.
                     if (currentSong && (audioSrc || isHifiRoute() || isNowPlayingStageActive || (activePlaybackContext === 'stage' && stageActiveEntryKind === 'lyrics'))) {
+                        if (effectiveKeyCode(event) === 'Enter') {
+                            if (isTextEntryTarget(event.target) || event.target instanceof HTMLButtonElement) {
+                                break;
+                            }
+                            if (
+                                isAndroidTv()
+                                && (
+                                    currentView !== 'player'
+                                    || isPanelOpen
+                                    || hasBlockingWindow()
+                                    || (event.target instanceof HTMLElement && event.target !== document.body && event.target !== document.documentElement)
+                                )
+                            ) {
+                                break;
+                            }
+                        }
                         event.preventDefault();
                         if (isNowPlayingStageActive) {
                             return;
@@ -298,7 +316,7 @@ export function usePlaybackInteractionBridge({
                         return;
                     }
 
-                    if (currentView !== 'player') return;
+                    if (currentView !== 'player' || isPanelOpen || hasBlockingWindow()) return;
                     event.preventDefault();
                     if (isNowPlayingStageActive) {
                         return;
@@ -333,7 +351,7 @@ export function usePlaybackInteractionBridge({
                         return;
                     }
 
-                    if (currentView !== 'player') return;
+                    if (currentView !== 'player' || isPanelOpen || hasBlockingWindow()) return;
                     event.preventDefault();
                     if (isNowPlayingStageActive) {
                         return;
@@ -350,6 +368,21 @@ export function usePlaybackInteractionBridge({
                         const nextTime = Math.min(duration || 0, currentTime.get() + 5);
                         if (!seekHifiRoute(nextTime) && !seekDuringTransition?.(nextTime) && audioRef.current) {
                             audioRef.current.currentTime = nextTime;
+                        }
+                    }
+                    break;
+                case 'ArrowDown':
+                    if (currentView === 'player' && !isPanelOpen && !hasBlockingWindow() && isAndroidTv()) {
+                        event.preventDefault();
+                        const playBtn = document.querySelector<HTMLElement>('[data-folia-player-bar-play="true"]');
+                        playBtn?.focus();
+                    }
+                    break;
+                case 'ArrowUp':
+                    if (currentView === 'player' && !isPanelOpen && !hasBlockingWindow() && isAndroidTv()) {
+                        event.preventDefault();
+                        if (document.activeElement instanceof HTMLElement) {
+                            document.activeElement.blur();
                         }
                     }
                     break;

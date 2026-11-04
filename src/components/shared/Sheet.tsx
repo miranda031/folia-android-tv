@@ -8,6 +8,8 @@ import { SettingsKitThemeContext, settingsTokens, useSettingsKitTheme } from '..
 import { KIT_EASE, KIT_MOTION, kitMotionTokens, kitTransition, useKitReducedMotion } from '../modal/settings/kit/motion';
 import { Tooltip } from '../modal/settings/kit';
 import { escapeCloses, tabTarget } from './sheetKeys';
+import { isAndroidTv } from '../../platform/runtime';
+import { focusTvElement } from '../../utils/tvSpatialFocus';
 
 // src/components/shared/Sheet.tsx
 // The frame of every dialog: a title and the close button at the top, the content in the middle,
@@ -33,11 +35,11 @@ import { escapeCloses, tabTarget } from './sheetKeys';
 export type SheetSize = 's' | 'm' | 'l' | 'xl' | 'side';
 
 const SIZE_CLASS: Record<SheetSize, string> = {
-    s: 'w-[400px]',
-    m: 'w-[600px]',
-    l: 'h-[720px] w-[880px]',
-    xl: 'h-[720px] w-[1160px]',
-    side: 'min-h-[min(420px,100%)] w-[772px]',
+    s: 'w-[min(400px,94vw)]',
+    m: 'w-[min(600px,94vw)]',
+    l: 'h-[min(720px,90vh)] w-[min(880px,94vw)]',
+    xl: 'h-[min(720px,90vh)] w-[min(1160px,95vw)]',
+    side: 'min-h-[min(420px,90vh)] w-[min(772px,94vw)]',
 };
 
 const BODY_CLASS = {
@@ -216,7 +218,16 @@ const SheetFrame: React.FC<SheetFrameProps> = ({
         const token = Symbol('sheet');
         openSheets.push(token);
         if (!panel.contains(document.activeElement)) {
-            (panel.querySelector<HTMLElement>('[data-autofocus]') ?? panel).focus({ preventScroll: true });
+            const autoFocusTarget = panel.querySelector<HTMLElement>('[data-autofocus]');
+            if (autoFocusTarget) {
+                autoFocusTarget.focus({ preventScroll: true });
+            } else if (isAndroidTv()) {
+                const stops = tabStops(panel);
+                const firstMeaningful = stops.find((el) => !el.matches('[data-tv-nav="sheet-close"]')) ?? stops[0] ?? panel;
+                firstMeaningful.focus({ preventScroll: true });
+            } else {
+                panel.focus({ preventScroll: true });
+            }
         }
 
         // On the document, so the parts inside the sheet see a key first (an open pick list closes
@@ -263,6 +274,16 @@ const SheetFrame: React.FC<SheetFrameProps> = ({
             const active = document.activeElement;
             if (opener?.isConnected && (!active || active === document.body || panel.contains(active))) {
                 opener.focus({ preventScroll: true });
+            } else if (isAndroidTv()) {
+                requestAnimationFrame(() => {
+                    const activeNow = document.activeElement;
+                    if (!activeNow || activeNow === document.body || panel.contains(activeNow)) {
+                        const fallback = document.querySelector<HTMLElement>('[data-tv-nav="tab"][aria-selected="true"], [data-tv-nav="tab"], [data-tv-nav="settings"]');
+                        if (fallback) {
+                            focusTvElement(fallback);
+                        }
+                    }
+                });
             }
         };
     }, [isPresent, opener]);
@@ -338,6 +359,7 @@ const SheetFrame: React.FC<SheetFrameProps> = ({
                         <Tooltip text={closeDisabled ? closeDisabledTip : closeTip} className={`inline-flex shrink-0 ${overlay ? 'relative z-20' : ''}`}>
                             <button
                                 type="button"
+                                data-tv-nav="sheet-close"
                                 onClick={requestClose}
                                 aria-label={t('ui.close')}
                                 // Not `disabled`: the dimmed X still takes the pointer and the keyboard, so its tip can show.

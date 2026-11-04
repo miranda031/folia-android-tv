@@ -195,6 +195,7 @@ import { errorFields } from './utils/errorText';
 import { runsOnWindows } from './utils/platform';
 import { useNativeBackButton } from './hooks/useNativeBackButton';
 import { useNativeMediaActions } from './hooks/useNativeMediaActions';
+import { useTvAppNavigation } from './hooks/useTvAppNavigation';
 import { useColorOsLyricFeed } from './hooks/useColorOsLyricFeed';
 
 const LOCAL_MUSIC_UPDATED_EVENT = 'folia-local-music-updated';
@@ -1633,13 +1634,28 @@ export default function App() {
         duration,
     });
     useNativeBackButton();
-    // Android：通知栏 / 耳机键的播放控制（桌面端没有原生通知媒体按钮，是空操作）。
+    useTvAppNavigation();
+    // Android：通知栏 / 耳机键 / 电视遥控器快进快退的播放控制（桌面端没有原生通知媒体按钮，是空操作）。
     useNativeMediaActions({
         play: resumePlayback,
         pause: pausePlayback,
         toggle: () => togglePlay(),
         next: () => { void handleNextTrack(); },
         previous: () => { void handlePrevTrack(); },
+        seekForward: () => {
+            if (!currentSong || isNowPlayingStageActive) return;
+            const nextTime = Math.min(duration || 0, currentTime.get() + 10);
+            if (!seekHifiRoute(nextTime) && !seekDuringTransition?.(nextTime) && audioRef.current) {
+                audioRef.current.currentTime = nextTime;
+            }
+        },
+        seekBackward: () => {
+            if (!currentSong || isNowPlayingStageActive) return;
+            const nextTime = Math.max(0, currentTime.get() - 10);
+            if (!seekHifiRoute(nextTime) && !seekDuringTransition?.(nextTime) && audioRef.current) {
+                audioRef.current.currentTime = nextTime;
+            }
+        },
     });
     const {
         isPlayerView,

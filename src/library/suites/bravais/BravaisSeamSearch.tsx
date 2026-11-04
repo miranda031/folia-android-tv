@@ -3,6 +3,8 @@ import { Search, X } from 'lucide-react';
 import type { BravaisLayer } from './bravaisLayer';
 import { setBravaisSearchOpen } from './bravaisHomeUiStore';
 import BravaisSeamCrumbs from './BravaisSeamCrumbs';
+import { isAndroidTv } from '../../../platform/runtime';
+import { focusTvElement } from '../../../utils/tvSpatialFocus';
 
 // src/library/suites/bravais/BravaisSeamSearch.tsx
 // 首页缝里的全局搜索框（设计稿 §10.5「全局搜索的过渡方案」）：⌕ 或 `/` 把首页窄缝临时展开成完整宽度，输入框拿焦点。
@@ -18,16 +20,40 @@ const BravaisSeamSearch: React.FC<{ layer: BravaisLayer }> = ({ layer }) => {
         inputRef.current?.focus({ preventScroll: true });
     }, []);
     if (!search) return null;
-    const close = () => setBravaisSearchOpen(false);
+    const close = () => {
+        setBravaisSearchOpen(false);
+        if (isAndroidTv()) {
+            const startedAt = performance.now();
+            const restoreSearchBtnFocus = () => {
+                const btn = document.querySelector<HTMLElement>(
+                    '.bravais-seam:not([inert]) [data-bravais-seam-action="search"]:not([disabled])',
+                );
+                if (btn && !btn.closest('[inert], [aria-hidden="true"]')) {
+                    focusTvElement(btn);
+                    return;
+                }
+                if (performance.now() - startedAt < 900) {
+                    window.requestAnimationFrame(restoreSearchBtnFocus);
+                }
+            };
+            window.requestAnimationFrame(restoreSearchBtnFocus);
+        }
+    };
     const submit = (event: FormEvent) => {
         event.preventDefault();
         const query = inputRef.current?.value.trim() ?? '';
         if (!query) return;
         search.onSubmit(query);
-        close();
+        setBravaisSearchOpen(false);
     };
     const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-        if (event.key !== 'Escape' || event.nativeEvent.isComposing) return;
+        if (event.nativeEvent.isComposing) return;
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            inputRef.current?.form?.requestSubmit();
+            return;
+        }
+        if (event.key !== 'Escape') return;
         event.preventDefault();
         event.stopPropagation();
         close();

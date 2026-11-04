@@ -140,7 +140,7 @@ export const useBravaisHomeChrome = ({
             id: 'settings',
             label: t('libraryBravaisHome.settings'),
             badge: updateAvailable ? t('options.updateAvailable') : undefined,
-            run: () => latest.current.props.onOpenSettings?.('help'),
+            run: () => latest.current.props.onOpenSettings?.('options'),
         });
         return tools;
     }, [hasLattice, hasPlayer, hasSettings, hasStage, stageActive, t, updateAvailable]);

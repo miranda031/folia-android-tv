@@ -193,6 +193,8 @@ const NowPlayingToast: React.FC<NowPlayingToastProps> = ({
                         onUpdate={invalidateLayout}
                         onLayoutAnimationComplete={invalidateLayout}
                         data-toast-card=""
+                        // 电视：遥控器从内容区按 ↓ 能落到这张卡片上。
+                        data-tv-nav="now-playing"
                         type="button"
                         layout="size"
                         onClick={isPositioning ? event => event.preventDefault() : onActivate}

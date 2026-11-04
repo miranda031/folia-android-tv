@@ -11,6 +11,7 @@ import i18n from '../i18n/config';
 
 import { getStoredBoolean, setStoredBoolean } from './storagePrimitives';
 import { setStatusMessage } from './useStatusMessageStore';
+import { isAndroidTv } from '../platform/runtime';
 
 export const FOLLOW_SYSTEM_THEME_STORAGE_KEY = 'follow_system_theme';
 
@@ -44,7 +45,7 @@ const readStoredDisableHomeDynamicBackground = (): boolean => {
 
     }
 
-    return false;
+    return isAndroidTv();
 };
 
 export type ThemeSettingsState = {

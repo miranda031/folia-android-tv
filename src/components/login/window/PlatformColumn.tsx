@@ -138,12 +138,13 @@ export const PlatformColumn: React.FC<PlatformColumnProps> = ({ rows, chosenId, 
 
     const canChoose = (row: ProviderAccountSummary) => rowStatus(row) !== 'off';
     const handleKeyDown = (event: React.KeyboardEvent) => {
-        // 搜索框里左右键、Home、End 和空格是打字用的，不是移动高亮。
+        // 搜索框里左右键、Home、End 和空格是打字用的，不是移动高亮；纵向列表里左右键留给跨栏空间导航。
         const inField = event.target instanceof HTMLInputElement;
+        const allowHorizontalStep = !inField && lie === 'row';
         const choosable = shown.filter(canChoose);
         const at = lit ? choosable.findIndex(row => row.providerId === lit.providerId) : -1;
-        const to = event.key === 'ArrowDown' || (!inField && event.key === 'ArrowRight') ? at + 1
-            : event.key === 'ArrowUp' || (!inField && event.key === 'ArrowLeft') ? at - 1
+        const to = event.key === 'ArrowDown' || (allowHorizontalStep && event.key === 'ArrowRight') ? at + 1
+            : event.key === 'ArrowUp' || (allowHorizontalStep && event.key === 'ArrowLeft') ? at - 1
                 : inField ? null : event.key === 'Home' ? 0 : event.key === 'End' ? choosable.length - 1 : null;
         if (to !== null) {
             const next = choosable[Math.max(0, Math.min(choosable.length - 1, to))];

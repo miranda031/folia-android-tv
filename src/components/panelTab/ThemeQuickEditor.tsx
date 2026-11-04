@@ -263,7 +263,7 @@ type ThemeQuickEditorHostProps = {
 };
 
 const ThemeQuickEditorHost: React.FC<ThemeQuickEditorHostProps> = ({ onSaveAiTheme, onSaveCustomTheme }) => {
-    const { isOpen, editorKind, aiTheme, customTheme, coverUrl, isDaylight, song, songKey, closeEditor, promptSourceText, isPureMusic, songTitle } = useThemeQuickEditorStore(useShallow(state => ({
+    const { isOpen, editorKind, aiTheme, customTheme, coverUrl, isDaylight, song, songKey, closeEditor, setSaveCustomThemeHandler, promptSourceText, isPureMusic, songTitle } = useThemeQuickEditorStore(useShallow(state => ({
         isOpen: state.isOpen,
         editorKind: state.editorKind,
         aiTheme: state.aiTheme,
@@ -276,7 +276,12 @@ const ThemeQuickEditorHost: React.FC<ThemeQuickEditorHostProps> = ({ onSaveAiThe
         isPureMusic: state.isPureMusic,
         songTitle: state.songTitle,
         closeEditor: state.closeEditor,
+        setSaveCustomThemeHandler: state.setSaveCustomThemeHandler,
     })));
+    useEffect(() => {
+        setSaveCustomThemeHandler(onSaveCustomTheme);
+        return () => setSaveCustomThemeHandler(null);
+    }, [onSaveCustomTheme, setSaveCustomThemeHandler]);
     const initialTheme = editorKind === 'custom' ? customTheme : (aiTheme ?? FALLBACK_AI_DUAL_THEME);
     const open = isOpen && editorKind && initialTheme ? { kind: editorKind, initialTheme } : null;
 

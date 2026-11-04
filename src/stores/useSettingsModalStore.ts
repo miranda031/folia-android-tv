@@ -67,7 +67,7 @@ export const useSettingsModalStore = create<SettingsModalUiState>((set, get) => 
     isSubSettingsViewOpen: false,
     settingsModalState: {
         isOpen: false,
-        initialTab: 'help',
+        initialTab: 'options',
         initialSubview: null,
         initialVisualizerSection: null,
         initialAnchor: null,
@@ -82,7 +82,7 @@ export const useSettingsModalStore = create<SettingsModalUiState>((set, get) => 
     },
     setIsUserGuideModalOpen: (isOpen) => set({ isUserGuideModalOpen: isOpen }),
     setIsSubSettingsViewOpen: (open) => set({ isSubSettingsViewOpen: open }),
-    openSettings: (initialTab = 'help', initialSubview = null, initialVisualizerSection = null, initialAnchorId = null, initialRowId = null) => set({
+    openSettings: (initialTab = 'options', initialSubview = null, initialVisualizerSection = null, initialAnchorId = null, initialRowId = null) => set({
         settingsModalState: {
             isOpen: true,
             initialTab,

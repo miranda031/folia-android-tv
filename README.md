@@ -1,247 +1,158 @@
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/b5d0e863-48be-497b-b0e9-4bd8d8ce9bf0" alt="Folia" width="100%" />
-</p>
-
 <div align="center">
-<a href="https://trendshift.io/repositories/71740?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-71740" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/71740" alt="chthollyphile%2Ffolia-major | Trendshift" width="250" height="55"/></a>
 
-# Folia
+# Folia Android TV · 电视大屏客户端
 
-Lyrics Reimagined // 辞曲新境
+**Lyrics Reimagined for the Living Room // 辞曲新境 · 客厅大屏重构版**
 
-简体中文 | [English](README.en.md)
+[![Release](https://img.shields.io/github/v/release/miranda031/folia-android-tv?style=for-the-badge&label=TV%20Release&color=0ea5e9)](https://github.com/miranda031/folia-android-tv/releases/latest)
+[![Platform](https://img.shields.io/badge/Platform-Android%20TV%20%7C%20Google%20TV%20%7C%20Projector-10b981?style=for-the-badge&logo=android)](https://github.com/miranda031/folia-android-tv/releases/latest)
+[![License](https://img.shields.io/badge/License-AGPL--3.0-f59e0b?style=for-the-badge)](LICENSE)
 
-[![GitHub release](https://img.shields.io/github/v/release/chthollyphile/folia-major?label=release)](https://github.com/chthollyphile/folia-major/releases)
-[![License](https://img.shields.io/github/license/chthollyphile/folia-major)](https://github.com/chthollyphile/folia-major/blob/main/LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/chthollyphile/folia-major?style=social)](https://github.com/chthollyphile/folia-major/stargazers)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D24-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/chthollyphile/folia-major)
-[![Discord](https://img.shields.io/discord/1541051241822687232?logo=discord&logoColor=white&label=Join%20our%20Discord)](https://discord.gg/dMDBTHxeKd)
-<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-35-orange.svg?style=flat-square)](CONTRIBUTORS.md)
-<!-- ALL-CONTRIBUTORS-BADGE:END -->
-
-[获取方式](https://github.com/chthollyphile/folia-major#%E8%8E%B7%E5%8F%96%E6%96%B9%E5%BC%8F)
-·
-[Vercel 部署](https://vercel.com/new/clone?repository-url=https://github.com/chthollyphile/folia-major)
-·
-[使用指南](https://folia-site.cielaniska.top/guide/)
-·
-[技术说明](docs/technical.md)
+[**⬇️ 立即下载最新电视版 APK (v0.7.25-tv.14)**](https://github.com/miranda031/folia-android-tv/releases/download/v0.7.25-tv.14/Folia-Android-TV-0.7.25-tv.14.apk) · [**📺 零基础电视安装图文教程**](docs/TV_INSTALL_GUIDE.md) · [**上游桌面版仓库**](https://github.com/chthollyphile/folia-major)
 
 </div>
 
+---
+
 ## 项目简介
 
-Folia是一个以全屏沉浸式歌词播放为核心的在线音乐播放器，支持网易云、酷狗、QQ 音乐、Navidrome 和本地音乐库，桌面端还支持波点音乐、YouTube Music、Spotify 和汽水音乐，通过智能歌词匹配，AI生成配色主题，以及多种全屏歌词动画为用户提供独特的听歌体验。
+**Folia Android TV** 是基于开源沉浸式歌词音乐播放器 [Folia (`chthollyphile/folia-major`)](https://github.com/chthollyphile/folia-major) 与安卓移植底座 [`whycfawa/folia-android`](https://github.com/whycfawa/folia-android) 深度重构的**原生智能电视 / 投影仪 / 电视盒子大屏客户端**。
 
-提供基于Electron的 windows/ macOS/ Linux 桌面端版本与基于 Node.js 的 Web 版本，支持多平台部署。
-
-如果希望能够在移动设备上使用，或在浏览器上体验，可以选择[一键部署到 Vercel](https://folia-site.cielaniska.top/guide/deploy-vercel) 的 Web 版本，或自行部署到其他支持 Node.js 的平台。
-
-## 快速下载
+针对客厅 **3 米视距（10-foot UI）**、**纯遥控器五向键（D-Pad）盲操**以及**智能电视差异巨大的芯片与内存配置**，本项目从底层 Android 原生 Activity 到前端空间焦点引擎、主题工作台与着色器渲染管线进行了全方位电视化改造，让你在家中电视或整面投影墙上享受如同音乐艺术展般的沉浸式逐字歌词与音频可视化体验。
 
 > [!TIP]
-> - **GitHub**：[Latest Release](https://github.com/chthollyphile/folia-major/releases/latest)，提供 Windows / macOS / Linux 全平台安装包。
-> - **网盘**：[夸克网盘](https://pan.quark.cn/s/6e4c6fa3bc6f) · [百度云](https://pan.baidu.com/s/1f0x3g-8PMcNCO-TJ5z1rPw?pwd=flia)（提取码 `flia`），适合国内网络，仅提供 Windows 与 Apple silicon 的正式版安装包。
->
-> 更多获取方式（Web 部署、Docker、AUR、Flatpak、移动端）见下方 [获取方式](#获取方式)。
+> **零门槛快速体验**：直接前往 [**Releases 页面**](https://github.com/miranda031/folia-android-tv/releases/latest) 下载签好名的 `Folia-Android-TV-0.7.25-tv.14.apk`，配合下方的 [**3 分钟保姆级电视安装图文教程**](#保姆级电视安装图文教程)（支持手机无线直装、豆包 AI 拍照指路、电脑 ADB 与 U 盘安装），任何品牌安卓电视一看就会！
 
-## 展示
+---
 
-![visualizer](./img/visualizer.png)
+## 电视端专属重构特性
 
-### 演示视频
+| 核心模块 | 电视大屏重构亮点 |
+| :--- | :--- |
+| **原生 Android TV 宿主层** | 内置 `LEANBACK_LAUNCHER` 电视桌面高清横幅图标、横屏全屏沉浸模式、屏幕常亮防休眠保护，以及搜狗等电视输入法关闭后自动夺回 WebView 遥控焦点的防丢焦补丁。 |
+| **9 层级遥控器空间焦点引擎** | 全新设计 `tvNavigationEngine` 2D 几何空间寻路与 **LIFO 返回键层级栈**：无论是弹窗、快捷下拉菜单、设置分页、侧边抽屉还是主页封面墙，遥控器上下左右键指哪打哪，绝无焦点死胡同，高对比发光焦点框一目了然。 |
+| **Bravais 无限书库墙电视适配** | 支持遥控器在无限封面墙与顶部控制胶囊间丝滑穿梭；菜单最小化后提供常驻发光**边缘唤醒胶囊（Edge Handle）**；支持左侧 `⌘` 按钮或遥控器菜单键一键呼出**全局命令面板与快捷菜单**（快速搜歌而不会误弹全屏软键盘遮挡画面）。 |
+| **8 款一键大屏主题 + 遥控调色** | 彻底解决原版触屏取色盘在电视上无法操作的问题！内置 **8 款电视精选高对比主题预设**（极夜流光、琥珀暖金、深海霓虹、樱霞微醺等），并将 HSV 调色盘改造为遥控器左右方向键步进调节。 |
+| **电视硬件识别与自适应降载** | 原生 `TvHardwareBridge` 自动探测电视 CPU 核心数、运行内存（RAM）、GPU 型号与刷新率，智能匹配 **旗舰高刷 / 均衡标准 / 流畅优先 / 省电长稳** 四档渲染策略，内置 30 秒内存与掉帧守护看门狗，2GB 内存老电视连续播放数小时依然丝滑不卡顿！ |
+| **在线音源 + 本地音乐 + 硬件媒体键** | 完整保留网易云、QQ 音乐、酷狗音乐、Navidrome 与本地音乐库支持；原生打通电视遥控器实体 **播放/暂停、上一首、下一首、快进/快退与菜单键**。 |
 
-https://github.com/user-attachments/assets/af806cf1-f67f-4b88-b2e7-57db507e9e81
+---
 
-https://github.com/user-attachments/assets/fd27f4f0-64b9-4c57-8c3b-10df767f934b
-
-https://github.com/user-attachments/assets/704f195a-2194-434b-86e8-8f36290e5cc4
-
-### 部分主题预览
+## 电视实机运行截图
 
 <table>
   <tr>
     <td width="50%">
-      <img src="./img/preview-fume.png" alt="Fume 主题预览" />
+      <img src="./docs/images/tv_home_60fps.png" alt="电视端 3D 专辑网格首页" />
     </td>
     <td width="50%">
-      <img src="./img/preview-lumi.png" alt="Lumi 主题预览" />
+      <img src="./docs/images/tv_lyrics_visualizer.png" alt="全屏沉浸式动态歌词与着色器舞台" />
     </td>
   </tr>
   <tr>
-    <td align="center"><strong>浮名</strong></td>
-    <td align="center"><strong>流光</strong></td>
+    <td align="center"><strong>客厅 1080p/4K 专辑网格与高对比遥控器光标</strong></td>
+    <td align="center"><strong>全屏沉浸式逐字歌词与实时音频可视化舞台</strong></td>
   </tr>
   <tr>
     <td width="50%">
-      <img src="./img/preview-cad.png" alt="Cad 主题预览" />
+      <img src="./docs/images/tv_bravais_quick_menu.png" alt="Bravais 无限书库墙与遥控器快捷菜单" />
     </td>
     <td width="50%">
-      <img src="./img/preview-pat.png" alt="Pat 主题预览" />
+      <img src="./docs/images/tv_command_palette.png" alt="全局命令面板与快速搜歌" />
     </td>
   </tr>
   <tr>
-    <td align="center"><strong>心象</strong></td>
-    <td align="center"><strong>云阶</strong></td>
+    <td align="center"><strong>Bravais 无限书库墙 & 遥控器高对比快捷菜单</strong></td>
+    <td align="center"><strong>一键呼出全局命令面板（不误弹输入法遮挡视野）</strong></td>
   </tr>
   <tr>
     <td width="50%">
-      <img src="./img/preview-cappella.jpg" alt="群唱 主题预览" />
+      <img src="./docs/images/tv_theme_presets.png" alt="电视专属一键主题预设与遥控调色" />
     </td>
     <td width="50%">
-      <img src="./img/preview-tilt.png" alt="Tilt 主题预览" />
+      <img src="./docs/images/tv_hardware_adaptive.png" alt="电视芯片与内存自动识别四档优化" />
     </td>
   </tr>
   <tr>
-    <td align="center"><strong>群唱</strong></td>
-    <td align="center"><strong>倾诉</strong></td>
-  </tr>
-    <tr>
-    <td width="50%">
-      <img src="./img/preview-diorama.png" alt="镜台 主题预览" />
-    </td>
-    <td width="50%">
-      <img src="./img/preview-pendolo.png" alt="时计 主题预览" />
-    </td>
-  </tr>
-  <tr>
-    <td align="center"><strong>镜台</strong></td>
-    <td align="center"><strong>时计</strong></td>
+    <td align="center"><strong>8 款大屏精选一键主题预设 & 遥控器调色滑块</strong></td>
+    <td align="center"><strong>自动识别电视硬件配置 · 四档画质帧率自适应</strong></td>
   </tr>
 </table>
 
-不同的歌词动画具有不同的排版氛围和可调参数，让全屏歌词拥有如同文字PV般的丰富视觉效果，同时又能兼顾响应式布局，自动适配不同窗口尺寸。
+---
 
-## 核心能力
+## 电视遥控器按键速查
 
-| 模块 | 说明 |
-| --- | --- |
-| 在线搜索与播放 | 搜索歌曲、歌手或专辑后即可播放，并自动加载相关封面与歌词。 |
-| 本地音乐支持 | 可导入本地音频文件，在本地安全保存索引信息，不上传文件内容。详细用法见 [本地音乐库管理](docs/local-library-management.md)。 |
-| 智能歌词匹配 | 本地歌曲可自动匹配在线歌词与封面，也支持手动修正匹配结果。 |
-| 本地歌词文件识别 | 自动加载同目录同名 `.lrc`、`.vtt`、`.ttml`、`.qrc`、`.yrc`、`.krc` 歌词文件，或歌词文件内嵌 LRC 歌词。适配 LDDC 生成的增强型逐字歌词格式。 |
-| Now Playing 接入 | 支持通过本机 [Now Playing](https://github.com/Widdit/now-playing-service/) 服务接入外部播放器的歌曲、时间轴与歌词信息，并驱动 Folia 的舞台视图与全屏歌词渲染。 |
-| AI 主题生成 | 基于歌曲情绪与歌词内容生成沉浸式背景与视觉参数。 |
-| 多端体验 | 提供 Web 部署方式，同时支持桌面端打包分发。 |
-| 模组系统（实验性） | 桌面版可通过 Folium 模组添加歌词动画、背景、播放页图层、命令等，并从 [模组市场](https://folium-compound.cielaniska.top) 安装官方认证的模组。详见 [模组系统](#模组系统folium-v1x)。 |
+| 遥控器按键 | 功能说明 |
+| :--- | :--- |
+| **方向键 `↑` `↓` `←` `→`** | 在封面墙、顶部胶囊、快捷菜单、设置项与底部播控栏之间移动高亮焦点；在色彩/数值滑块上按 `←` / `→` 精细调节 |
+| **确定键 `OK / Enter`** | 激活当前高亮按钮、播放选中歌曲、展开下拉快捷菜单；全屏歌词隐藏控制栏时按一下唤醒控制栏 |
+| **返回键 `Back`** | 严格按层级依次关闭：下拉菜单 → 命令面板/设置弹窗 → 搜索抽屉 → 从播放舞台退回主页；在主页连按两次退出应用 |
+| **菜单键 `☰`**（或界面左侧 `⌘`） | 在任意界面直接呼出 / 收起 **全局命令面板**（快速搜歌、切视图、换主题、打开设置） |
+| **实体媒体键 `⏯` `⏮` `⏭`** | 全局直接控制播放/暂停、上一曲、下一曲 |
 
-## 获取方式
+---
 
-桌面版内置前后端运行环境，适合希望即装即用的用户。
+## 保姆级电视安装图文教程
 
-### 一键部署
+> 完整细节与常见问题排错请查阅独立长文：👉 **[《Folia 电视版零基础保姆级安装图文教程》(docs/TV_INSTALL_GUIDE.md)](docs/TV_INSTALL_GUIDE.md)**
 
-如果你希望快速上线 Web 版本，请阅读 [Vercel 一键部署指南](https://folia-site.cielaniska.top/guide/deploy-vercel) 来创建项目
+### 1. 一图看懂安装全流程
+先在 [**Releases**](https://github.com/miranda031/folia-android-tv/releases/latest) 下载 `Folia-Android-TV-0.7.25-tv.14.apk`，确保手机/电脑与电视连在同一个路由器 Wi-Fi 下：
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/chthollyphile/folia-major) 
+![Folia Android TV 零基础安装总览](./docs/images/tutorial_overview.jpg)
 
-项目也支持一键部署到 Cloudflare，请参考 Vercel 的部署教程进行相应调整。
+### 2. 全品牌电视 / 投影仪开启「ADB 调试 & 未知来源」速查表
+无论是**小米/Redmi、海信/Vidda、TCL/雷鸟、创维/酷开、长虹、康佳、索尼、华为智慧屏**还是**极米/当贝/坚果投影仪**，对照下图 20 秒即可打开调试开关：
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/chthollyphile/folia-major)
+![全品牌电视开启 ADB 调试与未知来源速查表](./docs/images/tutorial_tv_adb_brands.png)
 
-Vercel 与 Cloudflare 上的 QQ 音乐不再需要额外部署一个常驻 API 实例：把 `VITE_QQ_API_BASE` 填成 `/api/qq`，再配一个 `QQ_SESSION_SECRET`（服务端密钥，**不加 `VITE_` 前缀**）即可。这种形态支持微信扫码和手机 QQ 扫码登录（手机 QQ 扫码要 qq-music-api 3.3.3 或更高版本），且播放前必须先登录；Cloudflare 上可以再绑定一个 Durable Object，让 QQ 扫码改走长连接，并多一个 QQ 音乐 App 扫码。完整步骤、平台差异和排错方法见 [QQ 音乐部署指南](docs/qq-music-deployment.md)。
+### 3. 最推荐：用手机「甲壳虫 ADB 助手」无线四步秒装
+不用电脑也不用找 U 盘，安卓手机装个 **甲壳虫 ADB 助手**，输入电视 IP 点连接 → 在电视屏幕弹窗点「允许」→ 点 `+` 号选 APK 即可装好（苹果 iPhone 用户可在电视装「欢视助手 / 当贝市场」扫码网页上传）：
 
-自托管用户可以使用 [Docker Compose 全栈部署](deploy/docker/README.md)。本地音乐目录访问依赖可信 HTTPS 安全上下文，部署文档包含 NAS 反向代理和证书要求。
+![手机无线安装 Folia 电视版四步流程](./docs/images/tutorial_phone_steps.jpg)
 
-### 直接下载
+### 4. 偷懒神器：让「豆包 / AI 智能体」拍照指路，或用电脑 / U 盘安装
+找不到自家老电视的隐藏菜单？打开手机 **豆包 / Kimi / DeepSeek** 拍一下电视设置界面发给它，或者开**豆包实时视频通话**让它看着屏幕教你按！电脑党也可用图形工具、3 行 ADB 命令或让电脑端 AI 智能体全自动代装：
 
-- **Windows / macOS / Linux**: 最新版本的安装包请前往 [Releases 页面](https://github.com/chthollyphile/folia-major/releases/latest) 下载。
-- **Arch Linux**: 可通过 AUR 获取 [folia-major-bin](https://aur.archlinux.org/packages/folia-major-bin)。
-- **Flatpak**: 社区提供的第三方 flatpak，详情见 [Flatpark](https://flatpark.org/apps/top.izuna.foliamajor/)。
-- **Android**: 社区第三方移植版见下方 [移动端](#移动端)。
+![用豆包 AI 智能体辅助安装与电脑端全攻略](./docs/images/tutorial_ai_and_pc_steps.png)
 
-> [!IMPORTANT]
-> 如果国内网络从 GitHub Releases 下载较慢，可以使用 [夸克网盘](https://pan.quark.cn/s/6e4c6fa3bc6f) 或 [百度云](https://pan.baidu.com/s/1f0x3g-8PMcNCO-TJ5z1rPw?pwd=flia) 下载。网盘链接仅提供 Windows 与 Apple silicon 的正式版安装包.
+---
 
-Linux 包、Wayland / Hyprland 遥控窗和桌面端细节见 [技术与开发说明](docs/technical.md)。
+## 本地开发与自行构建 APK
 
-### 移动端
+### 环境要求
+- **Node.js** `>= 22`（推荐 Node 24 LTS）
+- **JDK** `21`
+- **Android SDK**（`compileSdk 36`，`minSdk 24`）
 
-| 方式 | 说明 |
-| --- | --- |
-| **PWA（推荐）** | 部署 Web 版本或自托管版本后，在 Chrome for Android / iOS Safari 中将网页添加到主屏幕，即可作为 PWA 应用使用。 |
-| **社区移植版（Android）** | [maimai993/folia-sonnet](https://github.com/maimai993/folia-sonnet) · [whycfawa/folia-android](https://github.com/whycfawa/folia-android) |
-| **自行打包（Android）** | 有一定技术基础的用户可以用 Capacitor 将 Web 版本打包为可安装的 APK，参考示范仓库 [chthollyphile/folia-sonnet](https://github.com/chthollyphile/folia-sonnet)。 |
+### 构建步骤
 
-> [!NOTE]
-> 社区移植版均为第三方项目，由社区自发维护，功能会与官方 PC 版存在差异。使用中遇到问题请反馈到对应的社区仓库。
+```bash
+# 1. 克隆仓库并安装前端依赖
+git clone https://github.com/miranda031/folia-android-tv.git
+cd folia-android-tv
+npm install
 
-## 文档与开发
+# 2. 构建前端资源并同步到 Capacitor Android 工程
+npm run build
+npx cap sync android
 
-更完整的使用说明请访问 [Folia Guide](https://folia-site.cielaniska.top/guide/)。
+# 3. 编译 Android TV 安装包（Windows 下使用 gradlew.bat）
+cd android
+./gradlew assembleRelease
+```
 
-部署、环境变量、本地开发、Stage API、常用脚本和技术栈见 [技术与开发说明](docs/technical.md)。
+---
 
-## 模组系统（Folium v1.x）
+## 致谢与上游项目
 
-> [!NOTE]
-> 模组系统是实验性功能，仅桌面版可用，默认关闭，需要在「设置 → 模组 → 模组系统」中开启。
+本项目站在优秀的开源社区肩膀之上，特此向以下上游作者与贡献者致谢：
 
-Folium 是 Folia 的模组平台。模组可以添加新的歌词动画模式和背景类型、在播放页上叠加内容、给进度条加按钮和标记、注册命令与设置分区、在歌词显示前改写歌词，也可以通过 Node 入口调用 ffmpeg 等本地能力。模组以可信代码运行，每个模组在启用前都要在原生窗口中确认，文件变化后需要重新确认。
-
-- **模组市场**：[folium-compound.cielaniska.top](https://folium-compound.cielaniska.top) 提供官方模组和经过审查的社区模组，下载 zip 后拖进模组面板即可安装。
-- **官方认证**：市场里的模组都带有 Folium 签名，安装后显示「官方认证」；只通过安全审查的先行测试模组显示「先行测试」；没有签名的第三方模组显示「未验证」，同样可以使用。
-- **开发与贡献**：[模组开发与贡献指南](docs/folium/contributing.md)，从写第一个模组、本地调试，到提交到模组市场、审查与签名、发布更新。
-- **API 参考**：[Folium API 参考](docs/folium/api.md)，由契约文件生成的完整接口文档，按注册表、上下文、事件、服务等分类查询。
-- **平台规范**：[Folium 规范](mods/README.md)，包括清单字段、权限、注册表语义、事件、安全模型与版本策略。
-- **示范模组**：仓库的 [`mods/`](mods/) 目录，覆盖歌词动画、调参、进度条、播放页图层与透明视频导出。
-
-## Sync Server
-
-Folia 提供了可选的官方同步服务端 `sync-server`，用于在多个设备之间同步外观设置与 AI 主题库。服务端由用户自行托管，适合希望跨设备同步配色主题的用户。
-
-支持以下部署方式：
-
-- **Cloudflare Workers / D1**：免服务器运维的 Serverless 部署，推荐使用。
-  [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/chthollyphile/folia-major/tree/main/sync-server)
-- **Docker**：镜像与 Compose 入口见 [Docker 部署目录](deploy/docker/README.md)。
-- **Node.js 自托管**：使用 SQLite，适合本地或不方便使用 Docker 的环境。
-
-详细的环境变量、Token 配置与部署步骤请参阅 [Sync-Server 部署指南](https://folia-site.cielaniska.top/guide/deploy-sync)。部署完成后，在 Folia 的「设置 → 连接与集成」中填写服务端地址和 `SYNC_TOKEN` 即可启用同步。
-
-## 本地音乐与匹配说明
-
-Folia 会读取音频文件元数据、同目录歌词和封面，并可通过网易云、QQ 音乐或酷狗音乐补全歌曲信息。自动匹配按网易云、QQ、酷狗依次回退；匹配不准确时，可以手动选择候选、恢复首次导入的本地信息，或进一步合并、拆分艺术家与专辑实体。
-
-完整的导入、重扫、匹配、实体编辑、歌单、缓存和故障排查说明见 [本地音乐库管理](docs/local-library-management.md)。
-
-## Community
-
-加入discord社群，共同交流，获得帮助
-
-[![Discord](https://img.shields.io/discord/1541051241822687232?logo=discord&logoColor=white&label=Join%20our%20Discord)](https://discord.gg/dMDBTHxeKd)
-
-## 贡献者
-
-感谢所有为本项目进行 Issue 提交、Bug 报告、想法建议、测试与代码编写的贡献者，均依据 all-contributors 规范进行统计
-
-由于列表过长，贡献记录请见 [贡献者名单](CONTRIBUTORS.md)。
+- **[chthollyphile/folia-major](https://github.com/chthollyphile/folia-major)** —— Folia 官方桌面与 Web 核心仓库（提供惊艳的歌词排版动画引擎、着色器视觉系统与多音源架构）。
+- **[whycfawa/folia-android](https://github.com/whycfawa/folia-android)** —— Folia Android Capacitor 社区移植底座。
+- **[amll-dev/amll-ttml-db](https://github.com/amll-dev/amll-ttml-db)**、**[chenmozhijin/LDDC](https://github.com/chenmozhijin/LDDC)**、**[chenglou/pretext](https://github.com/chenglou/pretext)** 等开源项目与社区贡献者。
 
 ## 法律与免责声明
 
-本项目在 AI 的广泛协助下开发，因此仍可能存在细微或不易察觉的问题。若给你带来不便，敬请理解。
-
-本项目主要用于展示播放动效、界面设计与相关工程实现。应用中涉及的在线音乐流媒体、歌词、专辑封面及其他内容，其版权均归对应权利人所有。
-
-本仓库及其源代码仅供个人学习、技术交流与非营利测试使用。请勿将其用于商业盈利用途。若因对在线资源的传播、加工或再分发而引发版权纠纷或其他责任，均由使用者自行承担，项目开发者不承担相关责任。
-
-请始终尊重数字版权，并在条件允许时通过官方平台支持正版音乐。
-
-## 致谢
-
-特别感谢以下项目和资源：
-
-- [chenmozhijin/LDDC](https://github.com/chenmozhijin/LDDC)
-- [NeteaseCloudMusicApiEnhanced](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced)
-- [chenglou/pretext](https://github.com/chenglou/pretext)
-- [MakcRe/KuGouMusicApi](https://github.com/MakcRe/KuGouMusicApi)
-- [paper-design/shaders](https://github.com/paper-design/shaders)
-- [yakult-green-tea/qq-music-api](https://github.com/yakult-green-tea/qq-music-api)
-
-本项目接入了 [Apple Music-like Lyrics TTML 逐词歌词库](https://github.com/amll-dev/amll-ttml-db) 以提供高质量的歌词文件，感谢此歌词库的作者和贡献者们。
-
-## 许可证
-
-本项目基于 `AGPL-3.0` 许可证开源。
+本项目仓库及其源代码遵循 `AGPL-3.0` 开源许可证，仅供个人学习、大屏交互工程研究与非营利测试使用，请勿用于任何商业盈利用途。应用中涉及的在线音乐流媒体、歌词、专辑封面及其他内容版权均归对应权利人所有，请支持正版数字音乐。

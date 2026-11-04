@@ -10,6 +10,7 @@ import type { BravaisPanelActions } from './BravaisListPanel';
 import BravaisSeamContent from './BravaisSeamContent';
 import { BravaisSeamNavigation } from './BravaisSeamCrumbs';
 import type { LibraryNavigationContext } from '../../core/suite/suite.contract';
+import { isAndroidTv } from '../../../platform/runtime';
 
 // src/library/suites/bravais/BravaisSeam.tsx
 // 缝与它的边缘标签。缝的屏幕位置、宽度、内容透明度、标签显隐都由 stage 每帧直接写（bravaisFrame），这里只在
@@ -74,6 +75,9 @@ const BravaisSeam: React.FC<BravaisSeamProps> = ({
     const width = contentWidth;
     const row = axis === 'y';
     const tabLabel = currentLayer?.seam.title ?? '';
+    const tvTabLabel = isAndroidTv()
+        ? (tabLabel ? `展开 · ${tabLabel}` : t('libraryBravais.seamRestore'))
+        : tabLabel;
     const hideLeaving = leaving;
     // 渲染时就写：缝里的内容卸载（cleanup）时读到的已经是这一轮的当前层。
     const currentLayerKeyRef = useRef<string | null>(null);
@@ -113,7 +117,7 @@ const BravaisSeam: React.FC<BravaisSeamProps> = ({
                 onClick={onTab}
                 title={level === 'hidden' ? t('libraryBravais.seamRestore') : t('libraryBravais.seamReopenHere')}
             >
-                {tabLabel}
+                {tvTabLabel}
             </button>
         </>
     );

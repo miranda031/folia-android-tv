@@ -3,6 +3,7 @@ import { ChevronRight, Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { SettingsOptionDef } from './options';
 import { Unfold } from './Reveal';
+import { isAndroidTv } from '../../../../platform/runtime';
 
 // src/components/modal/settings/kit/Row.tsx
 // The one row every option is drawn as: label at the left, the control at the right, a hairline
@@ -94,6 +95,7 @@ export const Row: React.FC<RowProps> = ({ option, label, notice, hint, note, sub
                     <button
                         ref={linkRef}
                         type="button"
+                        data-tv-nav="settings-row-link"
                         disabled={disabled}
                         aria-labelledby={naming.labelId}
                         onKeyDown={(event) => {
@@ -120,6 +122,7 @@ export const Row: React.FC<RowProps> = ({ option, label, notice, hint, note, sub
                             {note && (
                                 <button
                                     type="button"
+                                    tabIndex={isAndroidTv() ? -1 : undefined}
                                     aria-label={t('options.settingsRowDetails')}
                                     aria-expanded={noteOpen}
                                     aria-controls={noteOpen ? noteId : undefined}

@@ -24,7 +24,9 @@ type ThemeQuickEditorState = ThemeQuickEditorContext & {
     isOpen: boolean;
     editorKind: ThemeQuickEditorKind | null;
     canOpenEditor: boolean;
+    saveCustomThemeHandler: ((theme: DualTheme) => void) | null;
     setContext: (context: ThemeQuickEditorContext) => void;
+    setSaveCustomThemeHandler: (handler: ((theme: DualTheme) => void) | null) => void;
     openEditor: (kind?: ThemeQuickEditorKind) => void;
     closeEditor: () => void;
 };
@@ -67,6 +69,7 @@ export const useThemeQuickEditorStore = create<ThemeQuickEditorState>((set, get)
     isOpen: false,
     editorKind: null,
     canOpenEditor: false,
+    saveCustomThemeHandler: null,
     setContext: (context) => set(state => {
         const nextKind = state.editorKind && canOpenKind(context, state.editorKind)
             ? state.editorKind
@@ -79,6 +82,7 @@ export const useThemeQuickEditorStore = create<ThemeQuickEditorState>((set, get)
             canOpenEditor: true,
         };
     }),
+    setSaveCustomThemeHandler: (handler) => set({ saveCustomThemeHandler: handler }),
     openEditor: (kind) => {
         const state = get();
         const nextKind = kind ?? resolveDefaultEditorKind(state);
