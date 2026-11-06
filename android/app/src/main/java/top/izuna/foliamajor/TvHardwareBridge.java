@@ -23,11 +23,34 @@ public final class TvHardwareBridge {
     private final Activity activity;
     private final WebView webView;
     private final int cachedMaxFreqKhz;
+    private final int cachedWebViewChromeMajor;
 
     public TvHardwareBridge(Activity activity, WebView webView) {
         this.activity = activity;
         this.webView = webView;
         this.cachedMaxFreqKhz = readCpuMaxFreqKhz();
+        this.cachedWebViewChromeMajor = parseChromeMajor(webView);
+    }
+
+    private static int parseChromeMajor(WebView webView) {
+        if (webView == null) return 0;
+        try {
+            String ua = webView.getSettings().getUserAgentString();
+            if (ua == null) return 0;
+            int idx = ua.indexOf("Chrome/");
+            if (idx < 0) idx = ua.indexOf("Chromium/");
+            if (idx < 0) return 0;
+            int start = ua.indexOf('/', idx) + 1;
+            int end = start;
+            while (end < ua.length() && Character.isDigit(ua.charAt(end))) {
+                end++;
+            }
+            if (end > start) {
+                return Integer.parseInt(ua.substring(start, end));
+            }
+        } catch (Throwable ignored) {
+        }
+        return 0;
     }
 
     @JavascriptInterface
@@ -45,7 +68,9 @@ public final class TvHardwareBridge {
                 totalRamMb = memInfo.totalMem / (1024L * 1024L);
                 availRamMb = memInfo.availMem / (1024L * 1024L);
                 lowMemory = memInfo.lowMemory;
-                isLowRamDevice = am.isLowRamDevice();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                    isLowRamDevice = am.isLowRamDevice();
+                }
             }
 
             int physicalWidth = 1920;
@@ -56,10 +81,15 @@ public final class TvHardwareBridge {
                 if (wm != null) {
                     Display display = wm.getDefaultDisplay();
                     if (display != null) {
-                        Display.Mode mode = display.getMode();
-                        if (mode != null) {
-                            physicalWidth = mode.getPhysicalWidth();
-                            physicalHeight = mode.getPhysicalHeight();
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            try {
+                                Display.Mode mode = display.getMode();
+                                if (mode != null) {
+                                    physicalWidth = mode.getPhysicalWidth();
+                                    physicalHeight = mode.getPhysicalHeight();
+                                }
+                            } catch (Throwable ignored) {
+                            }
                         }
                         DisplayMetrics dm = new DisplayMetrics();
                         display.getRealMetrics(dm);
@@ -74,9 +104,11 @@ public final class TvHardwareBridge {
             JSONObject json = new JSONObject();
             json.put("model", Build.MODEL != null ? Build.MODEL : "Android TV");
             json.put("brand", Build.BRAND != null ? Build.BRAND : "");
+            json.put("device", Build.DEVICE != null ? Build.DEVICE : "");
             json.put("hardware", Build.HARDWARE != null ? Build.HARDWARE : "");
             json.put("board", Build.BOARD != null ? Build.BOARD : "");
             json.put("sdkInt", Build.VERSION.SDK_INT);
+            json.put("webViewChromeMajor", cachedWebViewChromeMajor);
             json.put("cpuCores", Runtime.getRuntime().availableProcessors());
             json.put("cpuMaxFreqKhz", cachedMaxFreqKhz);
             json.put("totalRamMb", totalRamMb);

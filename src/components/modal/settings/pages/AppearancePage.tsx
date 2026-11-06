@@ -34,12 +34,14 @@ const TV_PERF_ZH: SettingsGroupDef = { id: 'tvPerformance', titleKey: '电视配
 const TV_PERF_EN: SettingsGroupDef = { id: 'tvPerformance', titleKey: 'TV Hardware & Adaptive Graphics' };
 
 const TV_TIER_LABELS_ZH: Record<TvPerformanceTier, string> = {
+    compat: '老电视兼容',
     lite: '省电流畅',
     balanced: '均衡标准',
     high: '旗舰画质',
 };
 
 const TV_TIER_LABELS_EN: Record<TvPerformanceTier, string> = {
+    compat: 'Legacy TV Compat',
     lite: 'Lite Smooth',
     balanced: 'Balanced',
     high: 'Flagship HQ',
@@ -108,6 +110,12 @@ const AppearancePage: React.FC = () => {
                 ? `当前生效：${tierLabelOf(tvPerf.effectiveTier)}${tvPerf.autoSteppedDown ? '（已智能降载）' : ''}`
                 : `Active: ${tierLabelOf(tvPerf.effectiveTier)}`,
             Icon: Cpu,
+        },
+        {
+            value: 'compat',
+            title: tierLabelOf('compat'),
+            desc: isZh ? 'GPU零崩溃 · 极光流动 · 老电视/盒子首选' : 'Zero WebGL · Aurora glow · Old TV/Box',
+            Icon: Sparkles,
         },
         {
             value: 'lite',

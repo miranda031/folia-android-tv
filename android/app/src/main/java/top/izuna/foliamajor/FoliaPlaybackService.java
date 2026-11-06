@@ -164,16 +164,34 @@ public class FoliaPlaybackService extends Service {
         FoliaNativePlugin.notePlaybackArtworkApplied(retainedArtwork != null);
 
         Notification notification = buildNotification(cachedTitle, cachedArtist, cachedPlaying, retainedArtwork);
-        startForeground(NOTIFICATION_ID, notification);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+                );
+            } else {
+                startForeground(NOTIFICATION_ID, notification);
+            }
+        } catch (Throwable error) {
+            try {
+                startForeground(NOTIFICATION_ID, notification);
+            } catch (Throwable ignored) {
+            }
+        }
         updatePlaybackLocks(cachedPlaying);
         String requestedCover = currentArtworkUrl;
         loadArtwork(requestedCover, bitmap -> {
             if (!requestedCover.equals(currentArtworkUrl)) return;
             mediaSession.setMetadata(buildMetadata(cachedTitle, cachedArtist, cachedAlbum, cachedDurationMs, bitmap, cachedCoverUrl, cachedSongKey));
             FoliaNativePlugin.notePlaybackArtworkApplied(bitmap != null);
-            NotificationManager manager = getSystemService(NotificationManager.class);
+            NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             if (manager != null) {
-                manager.notify(NOTIFICATION_ID, buildNotification(cachedTitle, cachedArtist, cachedPlaying, bitmap));
+                try {
+                    manager.notify(NOTIFICATION_ID, buildNotification(cachedTitle, cachedArtist, cachedPlaying, bitmap));
+                } catch (Throwable ignored) {
+                }
             }
         });
         return START_STICKY;
@@ -237,9 +255,12 @@ public class FoliaPlaybackService extends Service {
         ));
         mediaSession.setPlaybackState(buildPlaybackState(cachedPlaying, cachedPositionMs, cachedSongKey));
         if (notify) {
-            NotificationManager manager = getSystemService(NotificationManager.class);
+            NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             if (manager != null && running) {
-                manager.notify(NOTIFICATION_ID, buildNotification(cachedTitle, cachedArtist, cachedPlaying, retained));
+                try {
+                    manager.notify(NOTIFICATION_ID, buildNotification(cachedTitle, cachedArtist, cachedPlaying, retained));
+                } catch (Throwable ignored) {
+                }
             }
         }
     }
@@ -270,39 +291,45 @@ public class FoliaPlaybackService extends Service {
         return icon != 0 ? icon : android.R.drawable.ic_menu_info_details;
     }
 
+    @SuppressWarnings("deprecation")
     private Notification buildNotification(
         String title,
         String artist,
         boolean playing,
         Bitmap artwork
     ) {
+        int pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT
+            | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0);
         Intent activityIntent = new Intent(this, MainActivity.class);
         PendingIntent contentIntent = PendingIntent.getActivity(
             this,
             0,
             activityIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            pendingFlags
         );
         int playPauseIcon = playing ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play;
         PendingIntent playPauseIntent = PendingIntent.getBroadcast(
             this,
             1,
             new Intent(this, PlaybackActionReceiver.class).setAction(playing ? "pause" : "play"),
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            pendingFlags
         );
         PendingIntent previousIntent = PendingIntent.getBroadcast(
             this,
             2,
             new Intent(this, PlaybackActionReceiver.class).setAction("previous"),
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            pendingFlags
         );
         PendingIntent nextIntent = PendingIntent.getBroadcast(
             this,
             3,
             new Intent(this, PlaybackActionReceiver.class).setAction("next"),
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            pendingFlags
         );
-        Notification.Builder builder = new Notification.Builder(this, CHANNEL_ID)
+        Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+            ? new Notification.Builder(this, CHANNEL_ID)
+            : new Notification.Builder(this);
+        builder
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentTitle(title == null ? "Folia" : title)
             .setContentText(artist == null ? "" : artist)
@@ -312,10 +339,13 @@ public class FoliaPlaybackService extends Service {
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .addAction(android.R.drawable.ic_media_previous, "Previous", previousIntent)
             .addAction(playPauseIcon, playing ? "Pause" : "Play", playPauseIntent)
-            .addAction(android.R.drawable.ic_media_next, "Next", nextIntent)
-            .setStyle(new Notification.MediaStyle()
+            .addAction(android.R.drawable.ic_media_next, "Next", nextIntent);
+        try {
+            builder.setStyle(new Notification.MediaStyle()
                 .setMediaSession(mediaSession.getSessionToken())
                 .setShowActionsInCompactView(0, 1, 2));
+        } catch (Throwable ignored) {
+        }
         if (artwork != null) builder.setLargeIcon(artwork);
         return builder.build();
     }
@@ -419,13 +449,16 @@ public class FoliaPlaybackService extends Service {
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                CHANNEL_ID,
-                "Folia playback",
-                NotificationManager.IMPORTANCE_LOW
-            );
-            NotificationManager manager = getSystemService(NotificationManager.class);
-            if (manager != null) manager.createNotificationChannel(channel);
+            try {
+                NotificationChannel channel = new NotificationChannel(
+                    CHANNEL_ID,
+                    "Folia playback",
+                    NotificationManager.IMPORTANCE_LOW
+                );
+                NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                if (manager != null) manager.createNotificationChannel(channel);
+            } catch (Throwable ignored) {
+            }
         }
     }
 

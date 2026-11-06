@@ -19,7 +19,8 @@ import { getBeatEffectStrength, isBeatFxReady } from '../../../../services/beatF
 import { BEAT_EFFECT_IDS } from '../../../../services/beatFx/beatEffects';
 import { getActiveTransitionCue } from '../../../../services/automix/transitionCue';
 import { isAndroidTv } from '../../../../platform/runtime';
-import { useTvShaderBudget } from '../../../../services/tvPerformanceProfile';
+import { hasWebGl2Support, useTvPerformanceStore, useTvShaderBudget } from '../../../../services/tvPerformanceProfile';
+import { TvCompatAuroraBackground } from '../TvCompatAuroraBackground';
 
 // src/components/visualizer/backgrounds/latent/LatentBackground.tsx
 // Layers two cover-colored Paper shaders and drives their uniforms without React frame updates.
@@ -170,10 +171,12 @@ const LatentBackground: React.FC<LatentBackgroundProps> = ({
     const [coverColors, setCoverColors] = useState<string[]>([]);
     const tuning = tuningOverride ?? DEFAULT_LATENT_BACKGROUND_TUNING;
     const isTv = isAndroidTv();
+    const effectiveTier = useTvPerformanceStore(state => state.effectiveTier);
     const tvBudget = useTvShaderBudget();
-    const showMesh = tuning.displayMode !== 'dithering';
+    const isCompatMode = isTv && (effectiveTier === 'compat' || !hasWebGl2Support());
+    const showMesh = !isCompatMode && tuning.displayMode !== 'dithering';
     // 电视中低配档位下，当 MeshGradient 开启时跳过第二层全屏 soft-light Dithering WebGL 着色器，省掉整整一个 WebGL 上下文与 TBDR 全屏读回混合
-    const showDithering = tuning.displayMode !== 'mesh' && (!isTv || !showMesh || tvBudget.allowDualShaderBlend);
+    const showDithering = !isCompatMode && tuning.displayMode !== 'mesh' && (!isTv || !showMesh || tvBudget.allowDualShaderBlend);
     const shaderMinPixelRatio = isTv ? tvBudget.minPixelRatio : 1;
     const shaderMaxPixels = isTv ? tvBudget.maxPixels : MAX_SHADER_PIXELS;
     const allowMeshCssFilter = !isTv || tvBudget.allowPerFrameCssFilter;
@@ -222,6 +225,7 @@ const LatentBackground: React.FC<LatentBackgroundProps> = ({
     );
 
     useEffect(() => {
+        if (isCompatMode) return;
         const ditheringMount = ditheringRef.current?.paperShaderMount;
         const meshMount = meshRef.current?.paperShaderMount;
 
@@ -384,7 +388,7 @@ const LatentBackground: React.FC<LatentBackgroundProps> = ({
             loopKickRef.current = null;
             cancelAnimationFrame(animationFrame);
         };
-    }, [allowMeshCssFilter, audioBands, audioPower, showMesh, staticMode, tuning]);
+    }, [allowMeshCssFilter, audioBands, audioPower, isCompatMode, showMesh, staticMode, tuning]);
 
     // 暂停时上面这个循环会自行停下；恢复播放要把下一帧重新踢起来（它不会自己醒来）。
     useEffect(() => {
@@ -393,6 +397,18 @@ const LatentBackground: React.FC<LatentBackgroundProps> = ({
 
     // The shaders' `speed` prop is only where they start, and 0 where static: the frame loop sets the
     // speed from there and eases a pause in. A prop that followed `paused` would set it at once.
+    if (isCompatMode) {
+        return (
+            <TvCompatAuroraBackground
+                theme={theme}
+                colors={shaderColors.mesh}
+                audioPower={audioPower}
+                audioBands={audioBands}
+                paused={paused}
+            />
+        );
+    }
+
     return (
         <div
             className="absolute inset-0 z-0 overflow-hidden"

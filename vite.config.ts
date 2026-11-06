@@ -6,6 +6,7 @@ import { commandPinyinPlugin } from './dev/pinyin/commandPinyinPlugin.mjs';
 import { traditionalLocalePlugin } from './dev/i18n/traditionalLocalePlugin.mjs';
 import { icuFoliaDataPlugin } from './dev/icuFolia/icuFoliaDataPlugin.mjs';
 import { nebbiaStrokesPlugin } from './dev/nebbia/nebbiaStrokesPlugin.mjs';
+import { tvCssCompatPlugin } from './dev/build/tvCssCompatPlugin.mjs';
 import { normalizeBuildCommit, resolveBuildKind, resolveBuildRepo, resolveDevBuildKindOverride } from './dev/build/buildIdentity.mjs';
 import { VitePWA } from 'vite-plugin-pwa';
 import { execSync } from 'child_process';
@@ -218,6 +219,7 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
       include: ['music-metadata'],
     },
     build: {
+      target: 'chrome61',
       rollupOptions: {
         input: {
           main: 'index.html',
@@ -276,6 +278,7 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
       traditionalLocalePlugin(),
       icuFoliaDataPlugin(),
       nebbiaStrokesPlugin(),
+      tvCssCompatPlugin(),
       react(),
       VitePWA({
         registerType: 'autoUpdate',

@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- 向下兼容 Android 5.0+ (API 21+) 老电视与电视盒子，允许在低版本系统上安装并由运行时做 API 降级守卫 -->
+    <uses-sdk
+        tools:overrideLibrary="com.getcapacitor.android,androidx.webkit,androidx.activity,androidx.appcompat,androidx.appcompat.resources,androidx.core,androidx.core.ktx,androidx.fragment,androidx.lifecycle,androidx.savedstate,androidx.coordinatorlayout,androidx.media,androidx.core.splashscreen,org.apache.cordova" />
+
     <!-- 明确声明支持大屏与任意密度，减少厂商兼容模式把 App 塞进固定比例窗口的概率。 -->
     <supports-screens
         android:anyDensity="true"
@@ -11,6 +17,9 @@
 
     <application
         android:allowBackup="true"
+        android:extractNativeLibs="true"
+        android:hardwareAccelerated="true"
+        android:largeHeap="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"

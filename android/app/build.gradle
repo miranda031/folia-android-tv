@@ -8,6 +8,8 @@ def packageJson = new JsonSlurper().parseText(file('../../package.json').text)
 def keystorePropertiesFile = rootProject.file('keystore.properties')
 def keystoreProperties = new Properties()
 def hasReleaseKeystore = keystorePropertiesFile.exists()
+def customAppIdSuffix = project.hasProperty('appIdSuffix') ? project.property('appIdSuffix').toString().trim() : ''
+def customAppName = project.hasProperty('appNameOverride') ? project.property('appNameOverride').toString().trim() : 'Folia'
 
 if (hasReleaseKeystore) {
     keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
@@ -21,11 +23,13 @@ android {
         }
     }
     defaultConfig {
-        applicationId "top.izuna.foliamajor"
+        applicationId "top.izuna.foliamajor" + customAppIdSuffix
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 414
+        versionCode 415
         versionName packageJson.version
+        resValue "string", "app_name", customAppName
+        resValue "string", "title_activity_main", customAppName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

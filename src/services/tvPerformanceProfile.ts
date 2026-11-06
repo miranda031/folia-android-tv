@@ -26,7 +26,7 @@ import {
     VISUALIZER_FRAME_RATE_STORAGE_KEY,
 } from '../utils/frameRateLimiter';
 
-export type TvPerformanceTier = 'lite' | 'balanced' | 'high';
+export type TvPerformanceTier = 'compat' | 'lite' | 'balanced' | 'high';
 export type TvPerformanceMode = 'auto' | TvPerformanceTier;
 
 export interface TvHardwareInfo {
@@ -36,6 +36,7 @@ export interface TvHardwareInfo {
     hardware: string;
     board: string;
     sdkInt: number;
+    webViewChromeMajor: number;
     cpuCores: number;
     cpuMaxFreqKhz: number;
     totalRamMb: number;
@@ -77,6 +78,17 @@ const TV_PERF_MODE_KEY = 'folia_tv_perf_mode';
 const TV_PERF_INIT_KEY = 'folia_tv_perf_init_v1';
 
 const SHADER_BUDGETS: Record<TvPerformanceTier, TvShaderBudget> = {
+    compat: {
+        tier: 'compat',
+        visualizerDpr: 0.5,
+        maxPixels: 480 * 270,
+        minPixelRatio: 0.4,
+        allowDualShaderBlend: false,
+        allowPerFrameCssFilter: false,
+        temperaMaxResolution: 0.6,
+        nebbiaScale: 0.3,
+        fumeSnapshotScale: 0.8,
+    },
     lite: {
         tier: 'lite',
         visualizerDpr: 0.6,
@@ -119,6 +131,7 @@ const DEFAULT_HARDWARE_INFO: TvHardwareInfo = {
     hardware: '',
     board: '',
     sdkInt: 0,
+    webViewChromeMajor: 0,
     cpuCores: 4,
     cpuMaxFreqKhz: 0,
     totalRamMb: 0,
@@ -199,6 +212,7 @@ export function readTvHardwareInfo(): TvHardwareInfo {
         hardware: String(parsed.hardware || ''),
         board: String(parsed.board || ''),
         sdkInt: Number(parsed.sdkInt || 0),
+        webViewChromeMajor: Number(parsed.webViewChromeMajor || 0),
         cpuCores: Math.max(1, Number(parsed.cpuCores || fallbackCores || 4)),
         cpuMaxFreqKhz: Math.max(0, Number(parsed.cpuMaxFreqKhz || 0)),
         totalRamMb: Math.max(0, Number(parsed.totalRamMb || (deviceMemGb > 0 ? Math.round(deviceMemGb * 1024) : 0))),
@@ -214,8 +228,33 @@ export function readTvHardwareInfo(): TvHardwareInfo {
     };
 }
 
+export function hasWebGl2Support(): boolean {
+    if (typeof document === 'undefined') return true;
+    try {
+        const canvas = document.createElement('canvas');
+        return Boolean(canvas.getContext('webgl2'));
+    } catch {
+        return false;
+    }
+}
+
 export function classifyTvHardwareTier(hw: TvHardwareInfo): TvPerformanceTier {
     const gpu = hw.gpuRenderer || '';
+    const webGl2Available = hasWebGl2Support();
+
+    // 老电视/盒子深度兼容档（compat）：
+    // 1. 无 WebGL 2 支持（或 Chrome < 80，不支持 #version 300 es）
+    // 2. 老旧低性能 GPU（Mali-400/450、Mali-T 系列、PowerVR SGX、VideoCore、SwiftShader 纯软件渲染）
+    // 3. Android 7 及以下 (sdkInt <= 25) 或 物理运存 <= 1.5GB 的老电视/盒子
+    if (
+        !webGl2Available
+        || (hw.webViewChromeMajor > 0 && hw.webViewChromeMajor < 84)
+        || (hw.sdkInt > 0 && hw.sdkInt <= 25)
+        || (hw.totalRamMb > 0 && hw.totalRamMb <= 1600)
+        || /Mali-4\d\d|Mali-T[678]\d\d|PowerVR|VideoCore|SwiftShader|llvmpipe/i.test(gpu)
+    ) {
+        return 'compat';
+    }
 
     // 低配入门电视芯片判定：<= 2.6GB RAM、双核、低主频 <= 1.45GHz、Android Go LowRam 或入门级 GPU
     if (
@@ -223,7 +262,7 @@ export function classifyTvHardwareTier(hw: TvHardwareInfo): TvPerformanceTier {
         || (hw.totalRamMb > 0 && hw.totalRamMb <= 2650)
         || hw.cpuCores <= 2
         || (hw.cpuMaxFreqKhz > 0 && hw.cpuMaxFreqKhz <= 1_450_000)
-        || /Mali-4\d\d|Mali-T[678]\d\d|Mali-G31\b|PowerVR|VideoCore|SwiftShader|llvmpipe/i.test(gpu)
+        || /Mali-G31\b/i.test(gpu)
     ) {
         return 'lite';
     }
@@ -245,7 +284,7 @@ function readStoredPerfMode(): TvPerformanceMode {
     if (typeof window === 'undefined') return 'auto';
     try {
         const raw = window.localStorage.getItem(TV_PERF_MODE_KEY);
-        if (raw === 'lite' || raw === 'balanced' || raw === 'high' || raw === 'auto') {
+        if (raw === 'compat' || raw === 'lite' || raw === 'balanced' || raw === 'high' || raw === 'auto') {
             return raw;
         }
     } catch {
@@ -265,7 +304,8 @@ function writeStoredPerfMode(mode: TvPerformanceMode): void {
 
 function stepDownTier(tier: TvPerformanceTier): TvPerformanceTier {
     if (tier === 'high') return 'balanced';
-    return 'lite';
+    if (tier === 'balanced') return 'lite';
+    return 'compat';
 }
 
 export interface TvPerformanceState {
@@ -296,7 +336,7 @@ function applyVisualizerFrameCapForTier(tier: TvPerformanceTier): void {
     } catch {
         // ignore
     }
-    if (tier === 'lite') {
+    if (tier === 'compat' || tier === 'lite') {
         setGlobalVisualizerFrameRate(30);
     } else {
         setGlobalVisualizerFrameRate('off');
@@ -319,7 +359,7 @@ function applyTvTierStorePreferences(tier: TvPerformanceTier, forceWallAndMotion
         latticeStore.handleToggleLatticePerformanceMode(true);
     }
 
-    if (tier === 'lite') {
+    if (tier === 'compat' || tier === 'lite') {
         wallStore.setLook('solid');
         wallStore.setSeamClear(false);
         wallStore.setBackdropBlur(false);
@@ -489,7 +529,7 @@ export function startTvPerformanceWatchdog(): () => void {
 
             // 自动模式下检测持续掉帧自动降档
             const isPlaying = usePlaybackStore.getState().playerState === PlayerState.PLAYING;
-            if (store.mode === 'auto' && isPlaying && store.effectiveTier !== 'lite') {
+            if (store.mode === 'auto' && isPlaying && store.effectiveTier !== 'compat') {
                 if (fps > 0 && fps < 34) {
                     lowFpsStreak += 1;
                 } else {
@@ -508,7 +548,7 @@ export function startTvPerformanceWatchdog(): () => void {
                     } catch {
                         // ignore
                     }
-                    const tierName = nextTier === 'lite' ? '省电流畅' : '均衡标准';
+                    const tierName = nextTier === 'compat' ? '老电视兼容' : nextTier === 'lite' ? '省电流畅' : '均衡标准';
                     setStatusMessage({
                         type: 'info',
                         text: `检测到电视负载较高，已自动优化至「${tierName}」模式`,

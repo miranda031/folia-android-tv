@@ -20,10 +20,14 @@ const TV_STYLE_ID = 'folia-tv-mode';
 const TV_STYLES = `
 html.folia-tv { font-size: ${TV_ROOT_FONT_SIZE}; }
 
-/* 全局彻底隐藏鼠标和手型指针 */
-html.folia-tv,
-html.folia-tv * {
+/* 全局隐藏鼠标指针，但在用户使用飞鼠/物理鼠标移动时临时显现 */
+html.folia-tv:not(.folia-tv-pointer-active),
+html.folia-tv:not(.folia-tv-pointer-active) * {
     cursor: none !important;
+}
+html.folia-tv.folia-tv-pointer-active,
+html.folia-tv.folia-tv-pointer-active * {
+    cursor: default !important;
 }
 
 /* 电视端禁用高开销 CSS 实时背景模糊，释放 Mali/嵌入式 GPU 带宽给 60fps UI 与动效 */
@@ -101,7 +105,8 @@ html.folia-tv button[data-tv-nav="settings-row-link"]:focus {
     box-shadow: none !important;
     transform: none !important;
 }
-html.folia-tv .st-row:has(> button[data-tv-nav="settings-row-link"]:focus) {
+html.folia-tv .st-row:has(> button[data-tv-nav="settings-row-link"]:focus),
+html.folia-tv .st-row.is-tv-row-focused {
     border-radius: 10px !important;
     background-color: rgba(255, 255, 255, 0.14) !important;
     box-shadow: inset 0 0 0 2.5px rgba(255, 255, 255, 0.96),
@@ -309,5 +314,26 @@ export const installTvMode = (): boolean => {
         style.textContent = TV_STYLES;
         document.head.appendChild(style);
     }
+
+    // 监听鼠标/飞鼠移动与遥控器按键，无缝切换光标显隐
+    let pointerTimer: number | null = null;
+    window.addEventListener('mousemove', () => {
+        document.documentElement.classList.add('folia-tv-pointer-active');
+        if (pointerTimer !== null) window.clearTimeout(pointerTimer);
+        pointerTimer = window.setTimeout(() => {
+            document.documentElement.classList.remove('folia-tv-pointer-active');
+        }, 3500);
+    }, { passive: true });
+
+    window.addEventListener('keydown', (e) => {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(e.key)) {
+            document.documentElement.classList.remove('folia-tv-pointer-active');
+            if (pointerTimer !== null) {
+                window.clearTimeout(pointerTimer);
+                pointerTimer = null;
+            }
+        }
+    }, { passive: true });
+
     return true;
 };

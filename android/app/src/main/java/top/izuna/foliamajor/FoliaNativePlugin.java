@@ -988,7 +988,14 @@ public class FoliaNativePlugin extends Plugin {
         Double duration = call.getDouble("duration");
         intent.putExtra("position", position == null ? 0L : position.longValue());
         intent.putExtra("duration", duration == null ? 0L : duration.longValue());
-        ContextCompat.startForegroundService(getContext(), intent);
+        try {
+            ContextCompat.startForegroundService(getContext(), intent);
+        } catch (Throwable error) {
+            try {
+                getContext().startService(intent);
+            } catch (Throwable ignored) {
+            }
+        }
         call.resolve();
     }
 

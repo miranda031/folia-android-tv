@@ -60,19 +60,35 @@ public class MainActivity extends BridgeActivity {
         WebView webView = getBridge().getWebView();
         WebView.setWebContentsDebuggingEnabled(true);
         WebSettings settings = webView.getSettings();
-        settings.setMediaPlaybackRequiresUserGesture(false);
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        if (isTvDevice()) {
-            // 电视上用 UA 打标：原生在页面第一帧之前就定好了「这是电视」，首启引导默认选哪套
-            // 资料库界面、屏幕常亮默认开不开，都读这个结论，不用等页面起来再问原生。
-            settings.setUserAgentString(settings.getUserAgentString() + " FoliaTV");
-            webView.addJavascriptInterface(new TvHardwareBridge(this, webView), "FoliaTvHardware");
-            // 关掉 WebView 的空间导航：它按方向键自己挪 DOM 焦点，遥控器上表现为「按一下方向键，
-            // 焦点跑到搜索框、系统输入法弹出来盖住半个屏幕」。API 33 起这个开关默认是开的，
-            // 方向键改由页面自己接管（src/library/suites/grid/home/useTvHomeNavigation.ts）。
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                disableSpatialNavigation(settings);
+        try {
+            settings.setDomStorageEnabled(true);
+            settings.setDatabaseEnabled(true);
+            settings.setJavaScriptEnabled(true);
+        } catch (Throwable ignored) {
+        }
+        try {
+            settings.setMediaPlaybackRequiresUserGesture(false);
+        } catch (Throwable ignored) {
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
             }
+        } catch (Throwable ignored) {
+        }
+        if (isTvDevice()) {
+            // 电视/盒子/投影仪用 UA 打标：原生在页面第一帧之前就定好了「这是电视」，首启引导默认选哪套
+            // 资料库界面、屏幕常亮默认开不开、遥控器四向导航，都读这个结论，不用等页面起来再问原生。
+            String ua = settings.getUserAgentString();
+            if (ua == null) ua = "";
+            if (!ua.contains("FoliaTV")) {
+                settings.setUserAgentString(ua + " FoliaTV");
+            }
+            webView.addJavascriptInterface(new TvHardwareBridge(this, webView), "FoliaTvHardware");
+            // 关掉 WebView 原生空间导航：它按方向键自己挪 DOM 焦点，遥控器上表现为「按一下方向键，
+            // 焦点跑到搜索框、系统输入法弹出来盖住半个屏幕」。无论哪个 Android 版本都反射尝试关闭，
+            // 方向键统一由页面自己的 tvNavigationEngine 接管。
+            disableSpatialNavigation(settings);
             // 电视端默认开启沉浸式全屏，消除系统状态栏/导航栏黑边并铺满 1080p/4K 视口。
             if (!AdaptiveLayout.hasExplicitPreference(this)) {
                 AdaptiveLayout.setEnabled(this, true);
@@ -107,15 +123,21 @@ public class MainActivity extends BridgeActivity {
     }
 
     /**
-     * 这台设备是不是电视（AOSP TV / VIDAA / Google TV）。
+     * 这台设备是不是电视/电视盒子/投影仪（AOSP TV / VIDAA / Google TV / 当贝 / 小米盒子 / 华为悦盒 / 极米 / 坚果等）。
      *
-     * 走 UiModeManager 而不是看产品名或型号：电视固件五花八门，但 UI mode 这一个属性是统一的，
-     * 手机/平板投屏与车机不会误判成电视。
+     * 重要兼容改进：大量国产电视盒子（小米盒子、当贝盒子、移动魔百盒、电信机顶盒）、投影仪及部分老电视固件的
+     * UiModeManager 返回的是 UI_MODE_TYPE_NORMAL 而非 UI_MODE_TYPE_TELEVISION。若仅靠 UI_MODE_TYPE_TELEVISION
+     * 判断，这些设备将丢失 FoliaTV 标识与遥控器空间导航，导致遥控器无法操控。
+     * 本构建专为电视/盒子/投影仪大屏打造：只要用户未显式开启「手机模式」，一律启用完整电视模式与遥控器导航。
      */
     private boolean isTvDevice() {
-        UiModeManager uiModeManager = (UiModeManager) getSystemService(Context.UI_MODE_SERVICE);
-        return uiModeManager != null
-            && uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
+        try {
+            if (PhoneLayoutOrientation.isEnabled(this)) {
+                return false;
+            }
+        } catch (Throwable ignored) {
+        }
+        return true;
     }
 
     /**
@@ -160,7 +182,10 @@ public class MainActivity extends BridgeActivity {
         if (preferences.getLong(WEBVIEW_UPDATE_KEY, -1L) == updateTime) return;
         preferences.edit().putLong(WEBVIEW_UPDATE_KEY, updateTime).apply();
 
-        File webViewRoot = new File(getDataDir(), "app_webview/Default");
+        File dataDir = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
+            ? getDataDir()
+            : new File(getApplicationInfo().dataDir);
+        File webViewRoot = new File(dataDir, "app_webview/Default");
         String[] cachePaths = {
             "HTTP Cache",
             "Code Cache",
@@ -194,20 +219,28 @@ public class MainActivity extends BridgeActivity {
         getBridge().addWebViewListener(new WebViewListener() {
             @Override
             public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
-                boolean didCrash = detail != null && detail.didCrash();
-                int priority = detail == null ? -1 : detail.rendererPriorityAtExit();
+                boolean didCrash = false;
+                int priority = -1;
+                if (detail != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    try {
+                        didCrash = detail.didCrash();
+                        priority = detail.rendererPriorityAtExit();
+                    } catch (Throwable ignored) {
+                    }
+                }
+                final boolean crashedFinal = didCrash;
                 CrashDiagnostics.recordText(
                     getApplicationContext(),
                     "webview-renderer-gone",
                     "renderer",
-                    didCrash ? "renderer-crash" : "renderer-killed",
-                    "didCrash=" + didCrash + " priorityAtExit=" + priority,
+                    crashedFinal ? "renderer-crash" : "renderer-killed",
+                    "didCrash=" + crashedFinal + " priorityAtExit=" + priority,
                     "Capacitor WebView renderer process ended"
                 );
 
                 long now = SystemClock.elapsedRealtime();
                 runOnUiThread(() -> {
-                    if (isFinishing() || isDestroyed()) return;
+                    if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) return;
                     // A quiet minute means the previous rebuild held: start counting again.
                     if (now - lastWebViewRecoveryAt > RENDERER_RECOVERY_WINDOW_MS) rendererRecoveries = 0;
                     lastWebViewRecoveryAt = now;
@@ -233,7 +266,7 @@ public class MainActivity extends BridgeActivity {
                         "webview-renderer-guard",
                         "main",
                         "recreate",
-                        "attempt=" + rendererRecoveries + " didCrash=" + didCrash,
+                        "attempt=" + rendererRecoveries + " didCrash=" + crashedFinal,
                         "rebuilding activity after renderer death"
                     );
                     recreate();
@@ -379,6 +412,23 @@ public class MainActivity extends BridgeActivity {
                     dispatchWebCustomEvent("folia-tv-menu", "{}");
                 }
                 return true;
+            }
+            // 老电视/盒子 WebView（Chrome < 80）对遥控器确认键 KEYCODE_DPAD_CENTER (23) 或小键盘回车 (160)
+            // 有时不生成标准 DOM Enter 事件，统一映射为 KEYCODE_ENTER (66) 以确保所有版本 WebView 均能激活按钮。
+            if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
+                KeyEvent enterEvent = new KeyEvent(
+                    event.getDownTime(),
+                    event.getEventTime(),
+                    event.getAction(),
+                    KeyEvent.KEYCODE_ENTER,
+                    event.getRepeatCount(),
+                    event.getMetaState(),
+                    event.getDeviceId(),
+                    event.getScanCode(),
+                    event.getFlags(),
+                    event.getSource()
+                );
+                return super.dispatchKeyEvent(enterEvent);
             }
         }
         return super.dispatchKeyEvent(event);

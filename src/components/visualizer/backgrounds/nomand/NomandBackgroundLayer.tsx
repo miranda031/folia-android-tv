@@ -19,7 +19,8 @@ import {
 import { useFirstFrameDrawn } from '../../styleTransition/firstFrame';
 import { PAPER_SHADER_CONTEXT_ATTRIBUTES } from '../../../../utils/paperShaderContext';
 import { isAndroidTv } from '../../../../platform/runtime';
-import { useTvShaderBudget } from '../../../../services/tvPerformanceProfile';
+import { hasWebGl2Support, useTvPerformanceStore, useTvShaderBudget } from '../../../../services/tvPerformanceProfile';
+import { TvCompatAuroraBackground } from '../TvCompatAuroraBackground';
 
 // src/components/visualizer/backgrounds/nomand/NomandBackgroundLayer.tsx
 // Renders the selected Paper image shader with the current theme palette.
@@ -76,8 +77,20 @@ const NomandBackgroundLayer: React.FC<NomandBackgroundLayerProps> = ({
     const sourceUrl = resolveNomandSourceUrl(coverUrl, monetBackgroundImage, tuning);
     const shaderRef = useRef<PaperShaderElement | null>(null);
     const isTv = isAndroidTv();
+    const effectiveTier = useTvPerformanceStore(state => state.effectiveTier);
     const tvBudget = useTvShaderBudget();
-    useShaderDrawn(shaderRef, sourceUrl ? `${sourceUrl}:${tuning.effect}` : null);
+    const isCompatMode = isTv && (effectiveTier === 'compat' || !hasWebGl2Support());
+    useShaderDrawn(shaderRef, !isCompatMode && sourceUrl ? `${sourceUrl}:${tuning.effect}` : null);
+
+    if (isCompatMode) {
+        return (
+            <TvCompatAuroraBackground
+                theme={theme}
+                colors={[theme.primaryColor, theme.secondaryColor, theme.accentColor]}
+                paused={false}
+            />
+        );
+    }
 
     if (!sourceUrl) {
         return (
