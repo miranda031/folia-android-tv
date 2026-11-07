@@ -1,9 +1,13 @@
 // dev/build/tvCssCompatPlugin.mjs
-// 针对老版本 Android TV / 电视盒子 Chromium (Chrome 55 ~ 110) 自动修复现代 CSS 规则：
+// 针对老版本 Android TV / 电视盒子 Chromium (Chrome 55 ~ 110) 自动修复现代 CSS 规则与 Worker BigInt 字面量：
 // 1. 展开 @layer block 为顶层普通 CSS（Chrome < 99 会忽略 @layer 导致 Tailwind 样式全丢）
 // 2. 将 oklab / oklch / color-mix 降级为标准 rgb / rgba
 // 3. 提取 @property 初始值到顶层通用选择器，修复 Chrome < 85 无法解析 CSS 变量渐变与阴影
 // 4. 将 inset: X 自动补齐为 top/right/bottom/left（Chrome < 87）
+// 5. 将主包与 Web Worker 子包中的数字 BigInt 字面量 (0n, 1n) 降级为 BigInt(...)，防止 Chrome < 67 解析报错
+
+import fs from 'node:fs';
+import path from 'node:path';
 
 function clamp01(v) {
   return Math.min(1, Math.max(0, v));
@@ -158,16 +162,134 @@ function unwrapLayers(css) {
   return output;
 }
 
+export function transformJsBigIntLiterals(code) {
+  if (!/\d+n\b/.test(code)) return code;
+  // 仅针对不含模板字符串插值或安全位置的大整数数字字面量（如 0n, 1n, 6n, 8n, 65537n）进行语法降级，
+  // 避免 Chrome < 67 WebView 在解析阶段直接报 SyntaxError: Invalid or unexpected token。
+  let out = '';
+  let i = 0;
+  const len = code.length;
+  while (i < len) {
+    const ch = code[i];
+    // 字符串字面量：原样跳过
+    if (ch === '"' || ch === "'" || ch === '`') {
+      const quote = ch;
+      out += ch;
+      i++;
+      while (i < len) {
+        const c = code[i];
+        out += c;
+        i++;
+        if (c === '\\' && i < len) {
+          out += code[i];
+          i++;
+        } else if (c === quote) {
+          break;
+        }
+      }
+      continue;
+    }
+    // 单行与多行注释：原样跳过
+    if (ch === '/' && i + 1 < len && (code[i + 1] === '/' || code[i + 1] === '*')) {
+      if (code[i + 1] === '/') {
+        const nl = code.indexOf('\n', i + 2);
+        if (nl === -1) {
+          out += code.slice(i);
+          break;
+        }
+        out += code.slice(i, nl + 1);
+        i = nl + 1;
+        continue;
+      } else {
+        const endComment = code.indexOf('*/', i + 2);
+        if (endComment === -1) {
+          out += code.slice(i);
+          break;
+        }
+        out += code.slice(i, endComment + 2);
+        i = endComment + 2;
+        continue;
+      }
+    }
+    // 检查数字字面量后跟 n
+    if (ch >= '0' && ch <= '9') {
+      const prev = i > 0 ? code[i - 1] : '';
+      if (!/[a-zA-Z0-9_$]/.test(prev)) {
+        let j = i;
+        if (ch === '0' && j + 1 < len && (code[j + 1] === 'x' || code[j + 1] === 'X')) {
+          j += 2;
+          while (j < len && /[0-9a-fA-F]/.test(code[j])) j++;
+        } else {
+          while (j < len && code[j] >= '0' && code[j] <= '9') j++;
+        }
+        if (j < len && code[j] === 'n') {
+          const next = j + 1 < len ? code[j + 1] : '';
+          if (!/[a-zA-Z0-9_$]/.test(next)) {
+            const numLiteral = code.slice(i, j);
+            if (numLiteral.length > 15 || numLiteral.startsWith('0x') || numLiteral.startsWith('0X')) {
+              out += `BigInt("${numLiteral}")`;
+            } else {
+              out += `BigInt(${numLiteral})`;
+            }
+            i = j + 1;
+            continue;
+          }
+        }
+      }
+    }
+    out += ch;
+    i++;
+  }
+  return out;
+}
+
 export function tvCssCompatPlugin() {
   return {
     name: 'folia-tv-css-compat',
     apply: 'build',
     enforce: 'post',
+    renderChunk(code, chunk) {
+      if (chunk && chunk.fileName && chunk.fileName.endsWith('.js')) {
+        const transformed = transformJsBigIntLiterals(code);
+        if (transformed !== code) {
+          return { code: transformed, map: null };
+        }
+      }
+      return null;
+    },
     generateBundle(_options, bundle) {
       for (const fileName in bundle) {
         const file = bundle[fileName];
         if (file.type === 'asset' && fileName.endsWith('.css') && typeof file.source === 'string') {
           file.source = transformTvCssCompatibility(file.source);
+        } else if (file.type === 'chunk' && fileName.endsWith('.js') && typeof file.code === 'string') {
+          file.code = transformJsBigIntLiterals(file.code);
+        }
+      }
+    },
+    transformIndexHtml(html) {
+      // 移除本地 APK 资源标签上的 crossorigin 属性，避免部分魔改系统 WebView 拦截或挂起本地同源脚本/样式
+      return html
+        .replace(/\s+crossorigin(?:="")?/gi, '');
+    },
+    writeBundle(options) {
+      const outDir = options.dir || 'dist';
+      const assetsDir = path.resolve(outDir, 'assets');
+      if (!fs.existsSync(assetsDir)) return;
+      for (const name of fs.readdirSync(assetsDir)) {
+        const fullPath = path.join(assetsDir, name);
+        if (name.endsWith('.js') && fs.statSync(fullPath).isFile()) {
+          const raw = fs.readFileSync(fullPath, 'utf8');
+          const transformed = transformJsBigIntLiterals(raw);
+          if (transformed !== raw) {
+            fs.writeFileSync(fullPath, transformed, 'utf8');
+          }
+        } else if (name.endsWith('.css') && fs.statSync(fullPath).isFile()) {
+          const raw = fs.readFileSync(fullPath, 'utf8');
+          const transformed = transformTvCssCompatibility(raw);
+          if (transformed !== raw) {
+            fs.writeFileSync(fullPath, transformed, 'utf8');
+          }
         }
       }
     },

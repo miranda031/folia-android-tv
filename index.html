@@ -15,20 +15,6 @@
     <title>Folia</title>
     <script src="/tv-compat-polyfills.js"></script>
     <script src="/runtime-config.js"></script>
-  <script type="importmap">
-{
-  "imports": {
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "framer-motion": "https://aistudiocdn.com/framer-motion@^12.23.24",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
-    "react-i18next": "https://aistudiocdn.com/react-i18next@^16.3.5",
-    "i18next": "https://aistudiocdn.com/i18next@^25.6.3"
-  }
-}
-</script>
     <!-- 首屏加载遮罩：内联样式，随 HTML 首帧一起绘制，不等 index.css 与 JS bundle。
          由 src/utils/appSplash.ts 在 React 挂载后淡出并移除。 -->
     <style>
@@ -284,22 +270,106 @@
       })();
 
       // 最后一道启动保险：模块包或 React 根节点一直没挂上时，别让用户对着永远转的加载动画。
-      // 12 秒后把遮罩换成可点按的重试，而不是无声无息的空白页。
-      window.setTimeout(function () {
-        var splash = document.getElementById('app-splash');
-        if (!splash) {
-          return;
-        }
-        splash.innerHTML =
-          '<div style="display:flex;flex-direction:column;align-items:center;gap:14px;' +
-          'color:#fff;font:14px/1.5 system-ui,sans-serif;text-align:center;padding:24px">' +
-          '<div style="font-size:18px;font-weight:600">启动超时</div>' +
-          '<div style="opacity:.7">启动超时，点按重新加载 / Startup timed out, tap to reload.</div></div>';
-        splash.style.cursor = 'pointer';
-        splash.addEventListener('click', function () {
-          window.location.reload();
+      (function () {
+        var bootErrors = [];
+        window.addEventListener('error', function (e) {
+          var msg = e && (e.message || (e.error && e.error.message));
+          if (msg && bootErrors.length < 3) {
+            bootErrors.push(String(msg));
+          }
         });
-      }, 12000);
+        window.addEventListener('unhandledrejection', function (e) {
+          var r = e && e.reason;
+          var msg = r && (r.message || String(r));
+          if (msg && bootErrors.length < 3) {
+            bootErrors.push(String(msg));
+          }
+        });
+
+        // 定期巡检：一旦 #root 已经渲染出内容，立即移除遮罩（防止部分子组件生命周期未触发导致遮罩残留）
+        var checkInterval = window.setInterval(function () {
+          var splash = document.getElementById('app-splash');
+          if (!splash) {
+            window.clearInterval(checkInterval);
+            return;
+          }
+          var rootEl = document.getElementById('root');
+          if (rootEl && rootEl.children && rootEl.children.length > 0) {
+            window.clearInterval(checkInterval);
+            splash.classList.add('is-hiding');
+            window.setTimeout(function () {
+              if (splash.parentNode) splash.parentNode.removeChild(splash);
+            }, 320);
+          }
+        }, 400);
+
+        window.setTimeout(function () {
+          window.clearInterval(checkInterval);
+          var splash = document.getElementById('app-splash');
+          if (!splash) {
+            return;
+          }
+          var rootEl = document.getElementById('root');
+          if (rootEl && rootEl.children && rootEl.children.length > 0) {
+            if (splash.parentNode) splash.parentNode.removeChild(splash);
+            return;
+          }
+          var errDetail = bootErrors.length > 0
+            ? '<div style="opacity:.55;font-size:12px;max-width:680px;word-break:break-all;margin-top:4px">' +
+              bootErrors.join(' | ').replace(/[<>&]/g, '') + '</div>'
+            : '';
+          splash.innerHTML =
+            '<div style="display:flex;flex-direction:column;align-items:center;gap:16px;' +
+            'color:#fff;font:15px/1.5 system-ui,sans-serif;text-align:center;padding:28px">' +
+            '<div style="font-size:22px;font-weight:600">启动较慢或遇到阻碍</div>' +
+            '<div style="opacity:.75">请按遥控器【确定/OK】键或点按屏幕重试加载</div>' +
+            errDetail +
+            '<div style="display:flex;gap:16px;margin-top:8px">' +
+            '<button id="folia-splash-reload" tabindex="0" style="padding:10px 24px;border-radius:999px;border:2px solid #fff;background:#fff;color:#09090b;font-size:15px;font-weight:600;cursor:pointer;outline:none">重新加载</button>' +
+            '<button id="folia-splash-dismiss" tabindex="0" style="padding:10px 24px;border-radius:999px;border:2px solid rgba(255,255,255,0.4);background:transparent;color:#fff;font-size:15px;font-weight:500;cursor:pointer;outline:none">直接进入</button>' +
+            '</div></div>';
+          splash.style.cursor = 'pointer';
+          var reloadBtn = document.getElementById('folia-splash-reload');
+          var dismissBtn = document.getElementById('folia-splash-dismiss');
+          if (reloadBtn) {
+            try { reloadBtn.focus(); } catch (e) {}
+            reloadBtn.addEventListener('click', function (ev) {
+              ev.stopPropagation();
+              window.location.reload();
+            });
+          }
+          if (dismissBtn) {
+            dismissBtn.addEventListener('click', function (ev) {
+              ev.stopPropagation();
+              if (splash.parentNode) splash.parentNode.removeChild(splash);
+            });
+          }
+          splash.addEventListener('click', function () {
+            window.location.reload();
+          });
+          window.addEventListener('keydown', function onSplashKey(ev) {
+            if (!document.getElementById('app-splash')) {
+              window.removeEventListener('keydown', onSplashKey, true);
+              return;
+            }
+            var code = ev.keyCode || ev.which;
+            if (ev.key === 'ArrowRight' && dismissBtn) {
+              ev.preventDefault();
+              try { dismissBtn.focus(); } catch (e) {}
+            } else if (ev.key === 'ArrowLeft' && reloadBtn) {
+              ev.preventDefault();
+              try { reloadBtn.focus(); } catch (e) {}
+            } else if (ev.key === 'Enter' || code === 13 || code === 23 || code === 66) {
+              ev.preventDefault();
+              if (document.activeElement === dismissBtn) {
+                if (splash.parentNode) splash.parentNode.removeChild(splash);
+              } else {
+                window.location.reload();
+              }
+            }
+          }, true);
+        }, 20000);
+      })();
     </script>
     <div id="root"></div>
     <script type="module" src="/src/index.tsx"></script>

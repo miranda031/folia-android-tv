@@ -247,9 +247,12 @@ export const isQishuiDeviceId = value => typeof value === 'string' && /^\d{19}$/
 
 export function createQishuiDeviceId() {
   const bytes = randomBytes(8);
-  let value = 0n;
-  for (const byte of bytes) value = (value << 8n) | BigInt(byte);
-  return (value % 9000000000000000000n + 1000000000000000000n).toString();
+  const shift8 = BigInt(8);
+  const mod = BigInt('9000000000000000000');
+  const base = BigInt('1000000000000000000');
+  let value = BigInt(0);
+  for (const byte of bytes) value = (value << shift8) | BigInt(byte);
+  return (value % mod + base).toString();
 }
 
 export function qishuiParams(deviceId) {

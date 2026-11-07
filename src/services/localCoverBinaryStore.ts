@@ -52,6 +52,7 @@ const hasElectronBridge = (): boolean => (
 export const isLocalCoverWebRuntimeSupported = (): boolean => {
   if (typeof window === 'undefined') return false;
   if (hasElectronBridge()) return false;
+  if ((window as any).Capacitor?.isNativePlatform?.()) return false;
   const isLocalhost = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
   return (window.location.protocol === 'https:' || isLocalhost)
     && window.isSecureContext

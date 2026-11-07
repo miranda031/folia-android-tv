@@ -193,6 +193,7 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
   const appVersionLabel = process.env.APP_VERSION_LABEL?.trim() || 'Realeco';
   const appReleaseChannel = process.env.APP_RELEASE_CHANNEL?.trim().toLowerCase() || 'realeco';
   const dockerStackVersion = process.env.DOCKER_STACK_VERSION?.trim() || '';
+  const isCapacitorBuild = process.env.FOLIA_BUILD_TARGET === 'capacitor';
 
   // The /__folia_cover/ route (public/folia-cover-sw.js) runs inside the PWA worker instead of as a
   // worker of its own: a scope holds one registration, so a second script at '/' replaced sw.js and
@@ -220,12 +221,22 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
     },
     build: {
       target: 'chrome61',
+      emptyOutDir: true,
+      // Android / TV WebView 本地 APK 打包优化：
+      // 1. 禁用 CSS 代码分割，所有样式合并为单文件随 index.html 直接加载，彻底消除 __vitePreload 动态注入 <link rel="stylesheet"> 在部分电视 WebView 上不触发 onload 导致首屏死锁的隐患；
+      // 2. 禁用 modulePreload，避免启动瞬间向 WebView shouldInterceptRequest 并发发起数十个预加载请求及 import.meta.resolve 兼容性问题。
+      cssCodeSplit: !isCapacitorBuild,
+      modulePreload: isCapacitorBuild ? false : undefined,
       rollupOptions: {
-        input: {
-          main: 'index.html',
-          stageClient: 'stage-client.html',
-          modExport: 'mod-export.html',
-        },
+        input: isCapacitorBuild
+          ? {
+              main: 'index.html',
+            }
+          : {
+              main: 'index.html',
+              stageClient: 'stage-client.html',
+              modExport: 'mod-export.html',
+            },
         output: {
           // Rolldown ignores manualChunks once codeSplitting is set, so every manual split lives here.
           codeSplitting: {
@@ -249,7 +260,7 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
           // when a mod or a theme's lyricsIcons asks for that icon. They live in one directory so the
           // PWA precache can leave them out; workbox.runtimeCaching keeps the ones that get used.
           chunkFileNames(chunk) {
-            return chunk.moduleIds.some(id => id.includes('/node_modules/lucide-react/dist/esm/icons/'))
+            return chunk.moduleIds.some(id => id.replace(/\\/g, '/').includes('/node_modules/lucide-react/dist/esm/icons/'))
               && chunk.moduleIds.length === 1
               ? 'assets/folium-icons/[name]-[hash].js'
               : 'assets/[name]-[hash].js';
@@ -281,6 +292,9 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
       tvCssCompatPlugin(),
       react(),
       VitePWA({
+        // Android APK 所有静态资源已在本地包内，禁用 PWA Service Worker 预缓存，
+        // 彻底避免首启时 sw.js 并发拉取数百个本地资源写爆电视 eMMC 闪存与 WebView 连接池导致启动超时。
+        disable: isCapacitorBuild,
         registerType: 'autoUpdate',
         includeAssets: ['icon.svg'],
         devOptions: {

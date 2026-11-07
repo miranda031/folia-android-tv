@@ -35,7 +35,8 @@ const scheduleThumbnailJob = (task) => new Promise((resolve, reject) => {
       reject(error);
     } finally {
       activeThumbnailJobs -= 1;
-      thumbnailQueue.shift()?.();
+      const nextJob = thumbnailQueue.shift();
+      if (typeof nextJob === 'function') nextJob();
     }
   };
   if (activeThumbnailJobs < 2) void run();
@@ -47,7 +48,7 @@ const getOrCreateThumbnail = async (directory, digest, sourceFile, requestedSize
   const thumbnailName = `${digest}.bin.${requestedSize}.webp`;
   try {
     return await directory.getFileHandle(thumbnailName).then(handle => handle.getFile());
-  } catch {
+  } catch (e) {
     // Continue with lazy generation.
   }
 
@@ -91,7 +92,7 @@ const getCoverResponse = async (requestUrl) => {
   let assetId;
   try {
     assetId = decodeURIComponent(requestUrl.pathname.slice(COVER_PATH_PREFIX.length));
-  } catch {
+  } catch (e) {
     return new Response('Bad request', { status: 400 });
   }
   const match = ASSET_ID_PATTERN.exec(assetId);
@@ -106,10 +107,11 @@ const getCoverResponse = async (requestUrl) => {
       directory.getFileHandle(`${match[1]}.json`).then(handle => handle.getFile()).then(value => value.text()),
     ]);
     const descriptor = JSON.parse(rawDescriptor);
-    const mimeType = typeof descriptor?.mimeType === 'string' ? descriptor.mimeType.toLowerCase() : '';
-    if (descriptor?.id !== assetId
+    const mimeType = (descriptor && typeof descriptor.mimeType === 'string') ? descriptor.mimeType.toLowerCase() : '';
+    if (!descriptor
+      || descriptor.id !== assetId
       || !ALLOWED_MIME_TYPES.has(mimeType)
-      || descriptor?.size !== file.size
+      || descriptor.size !== file.size
       || file.size <= 0) {
       return new Response('Not found', { status: 404 });
     }
@@ -128,7 +130,7 @@ const getCoverResponse = async (requestUrl) => {
         'X-Content-Type-Options': 'nosniff',
       },
     });
-  } catch {
+  } catch (e) {
     return new Response('Not found', { status: 404 });
   }
 };

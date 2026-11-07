@@ -2220,15 +2220,18 @@ function qqRsaPkcs1Encrypt(message) {
   block[2 + paddingLength] = 0x00;
   block.set(message, 3 + paddingLength);
 
-  const exponent = 65537n;
-  let value = 0n;
-  for (const byte of block) value = (value << 8n) | BigInt(byte);
-  let result = 1n;
+  const zero = BigInt(0);
+  const one = BigInt(1);
+  const eight = BigInt(8);
+  const exponent = BigInt(65537);
+  let value = zero;
+  for (const byte of block) value = (value << eight) | BigInt(byte);
+  let result = one;
   let base = value % modulus;
   let exp = exponent;
-  while (exp > 0n) {
-    if (exp & 1n) result = (result * base) % modulus;
-    exp >>= 1n;
+  while (exp > zero) {
+    if (exp & one) result = (result * base) % modulus;
+    exp >>= one;
     base = (base * base) % modulus;
   }
   return qqHexToBytes(result.toString(16).padStart(k * 2, '0'));
@@ -2807,7 +2810,7 @@ export async function handleQQAlbumSubscribe(input, cookieHeader) {
     return { __foliaBridgeError: 'UNSUPPORTED', message: 'QQ album subscribe: bad album mid' };
   }
   const owner = String(qqCookieMusicId(cookieHeader) || '').trim();
-  if (!/^\d{1,19}$/.test(owner) || BigInt(owner) === 0n) return qqAuthRequired('album-subscribe');
+  if (!/^\d{1,19}$/.test(owner) || BigInt(owner) === BigInt(0)) return qqAuthRequired('album-subscribe');
   // 只在安全范围内转 number，超出就沿用字符串（与参考实现同一判断）。
   const statusUin = BigInt(owner) <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(owner) : owner;
 

@@ -5,6 +5,7 @@ import './index.css';
 import './styles/androidPhoneFit.css';
 import App from './App';
 import AppSplashGate from './components/AppSplashGate';
+import { hideAppSplash } from './utils/appSplash';
 import ChunkLoadBoundary from './components/app/ChunkLoadBoundary';
 import { installPlaybackHeartbeat } from './services/playbackHeartbeat';
 import RemoteControlApp from './components/remote/RemoteControlApp';
@@ -73,7 +74,8 @@ const FirstScreenMounted: React.FC<{ children: React.ReactNode }> = ({ children 
     return <>{children}</>;
 };
 
-const renderApp = () => root.render(
+const renderApp = () => {
+  root.render(
     <React.StrictMode>
       <ChunkLoadBoundary>
         <AppSplashGate>
@@ -90,6 +92,11 @@ const renderApp = () => root.render(
       </ChunkLoadBoundary>
     </React.StrictMode>
   );
+  // 双保险：即使子组件树存在异步挂起或旧版 WebView 延迟触发 useEffect，也确保遮罩在 500ms 内安全退场。
+  window.setTimeout(() => {
+    hideAppSplash();
+  }, 500);
+};
 
 // Library suites declare their chrome actions in their manifests; the palette cannot import the
 // registry, so the commands are put into its list here, before anything renders (main window only,
@@ -118,13 +125,30 @@ const bootNavidrome = async () => {
     if (result === 'applied') setNavidromeEnabledState(isNavidromeEnabled());
 };
 
-// allSettled：mod 加载失败也要等预置写完再渲染，失败原因单独打出来，不吞掉。
+// allSettled + 2000ms 硬上限：任何情况下绝不阻塞首屏挂载。
+let hasRenderedApp = false;
+const safeRenderAppOnce = () => {
+    if (hasRenderedApp) return;
+    hasRenderedApp = true;
+    try {
+        initializeLocalCoverRuntime();
+    } catch (err) {
+        console.warn('[Bootstrap] initializeLocalCoverRuntime error:', err);
+    }
+    renderApp();
+};
+
+const bootTimeout = window.setTimeout(() => {
+    console.warn('[Bootstrap] Pre-mount tasks exceeded 2000ms deadline, mounting immediately.');
+    safeRenderAppOnce();
+}, 2000);
+
 void Promise.allSettled([bootFolium(), bootNavidrome()])
     .then(([folium, navidrome]) => {
         if (folium.status === 'rejected') console.error('[Bootstrap] Folium boot failed:', folium.reason);
         if (navidrome.status === 'rejected') console.warn('[Navidrome] Server preset boot failed:', navidrome.reason);
     })
     .finally(() => {
-        initializeLocalCoverRuntime();
-        renderApp();
+        window.clearTimeout(bootTimeout);
+        safeRenderAppOnce();
     });

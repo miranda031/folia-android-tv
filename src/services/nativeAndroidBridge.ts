@@ -470,17 +470,29 @@ export const installNativeAndroidBridge = async (): Promise<void> => {
   installCookieShim(plugin);
   installFetchShim(plugin);
   installMessageBridge();
-  const { installNativePlaybackBridge } = await import('./nativePlaybackBridge');
-  await installNativePlaybackBridge(plugin as any);
 
-  // @ts-ignore The bundled extension module is plain JavaScript.
-  const module = await import('../nativeBridge/api/folia.js');
-  apiHandler = module.handleFoliaApiRequest as ApiHandler;
-  postToPage({
-    type: 'FOLIA_BRIDGE_READY',
-    ready: true,
-    version: BRIDGE_VERSION,
-    extId: 'folia-native-android',
-  });
-  flushQueuedRequests();
+  // 让出主线程首帧渲染时间片，避免解析大型 API 桥模块阻塞 React 首屏挂载（请求已由 queuedRequests 自动排队）
+  await new Promise<void>((resolve) => window.setTimeout(resolve, 60));
+
+  try {
+    const { installNativePlaybackBridge } = await import('./nativePlaybackBridge');
+    await installNativePlaybackBridge(plugin as any);
+  } catch (err) {
+    console.warn('[FoliaNativeBridge] installNativePlaybackBridge failed:', err);
+  }
+
+  try {
+    // @ts-ignore The bundled extension module is plain JavaScript.
+    const module = await import('../nativeBridge/api/folia.js');
+    apiHandler = module.handleFoliaApiRequest as ApiHandler;
+    postToPage({
+      type: 'FOLIA_BRIDGE_READY',
+      ready: true,
+      version: BRIDGE_VERSION,
+      extId: 'folia-native-android',
+    });
+    flushQueuedRequests();
+  } catch (err) {
+    console.error('[FoliaNativeBridge] Failed to load folia API bridge module:', err);
+  }
 };

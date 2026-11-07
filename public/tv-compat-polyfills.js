@@ -250,4 +250,88 @@
       };
     };
   }
+
+  // 16. BigInt safe fallback for WebViews < Chrome 67
+  if (typeof root.BigInt !== 'function') {
+    root.BigInt = function (val) {
+      if (typeof val === 'number') return Math.trunc(val);
+      if (typeof val === 'string') {
+        var parsed = Number(val);
+        return isNaN(parsed) ? 0 : Math.trunc(parsed);
+      }
+      return val ? 1 : 0;
+    };
+  }
+
+  // 17. RegExp lookbehind safe fallback for WebViews < Chrome 62
+  // 防止部分模块构造含 (?<=...) 或 (?<!...) 的正则时在老内核抛出 SyntaxError 导致整包崩溃
+  try {
+    new RegExp('(?<=a)b');
+  } catch (e) {
+    var NativeRegExp = root.RegExp;
+    var PatchedRegExp = function (pattern, flags) {
+      if (typeof pattern === 'string' && /\(\?<[=!]/.test(pattern)) {
+        var safePattern = pattern.replace(/\(\?<[=!][^)]*\)/g, '');
+        return new NativeRegExp(safePattern, flags);
+      }
+      return flags !== undefined ? new NativeRegExp(pattern, flags) : new NativeRegExp(pattern);
+    };
+    PatchedRegExp.prototype = NativeRegExp.prototype;
+    try {
+      Object.setPrototypeOf(PatchedRegExp, NativeRegExp);
+    } catch (_) {}
+    root.RegExp = PatchedRegExp;
+  }
+
+  // 18. IntersectionObserver safe fallback if absent on older WebViews
+  if (typeof root.IntersectionObserver === 'undefined') {
+    root.IntersectionObserver = function (callback) {
+      return {
+        observe: function (target) {
+          setTimeout(function () {
+            try {
+              callback([{ isIntersecting: true, intersectionRatio: 1, target: target }], this);
+            } catch (_) {}
+          }, 16);
+        },
+        unobserve: function () {},
+        disconnect: function () {},
+        takeRecords: function () { return []; }
+      };
+    };
+  }
+
+  // 19. MatchMedia addEventListener / removeEventListener polyfill (Chrome < 70 only had addListener)
+  if (typeof root.matchMedia === 'function') {
+    var origMatchMedia = root.matchMedia.bind(root);
+    root.matchMedia = function (query) {
+      var mql = origMatchMedia(query);
+      if (mql && !mql.addEventListener && mql.addListener) {
+        mql.addEventListener = function (type, listener) {
+          if (type === 'change') mql.addListener(listener);
+        };
+        mql.removeEventListener = function (type, listener) {
+          if (type === 'change') mql.removeListener(listener);
+        };
+      }
+      return mql;
+    };
+  }
+
+  // 20. Android APK / TV WebView 环境自动卸载残留 Service Worker，防止首启/升级时被 workbox 预缓存风暴阻塞
+  try {
+    var ua = (root.navigator && root.navigator.userAgent) || '';
+    var isAndroidApk = Boolean(
+      root.Capacitor ||
+      root.FoliaTvHardware ||
+      (root.location && root.location.hostname === 'localhost' && (/FoliaTV/i.test(ua) || /;\s*wv\)/i.test(ua)))
+    );
+    if (isAndroidApk && root.navigator && root.navigator.serviceWorker && typeof root.navigator.serviceWorker.getRegistrations === 'function') {
+      root.navigator.serviceWorker.getRegistrations().then(function (regs) {
+        for (var i = 0; i < regs.length; i++) {
+          try { regs[i].unregister(); } catch (_) {}
+        }
+      }).catch(function () {});
+    }
+  } catch (_) {}
 })(typeof globalThis !== 'undefined' ? globalThis : typeof self !== 'undefined' ? self : window);

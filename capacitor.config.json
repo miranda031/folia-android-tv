@@ -5,7 +5,11 @@
   "loggingBehavior": "debug",
   "backgroundColor": "#09090b",
   "android": {
-    "allowMixedContent": true
+    "allowMixedContent": true,
+    "minWebViewVersion": 55,
+    "useLegacyBridge": true,
+    "appendUserAgent": "FoliaTV",
+    "resolveServiceWorkerRequests": false
   },
   "server": {
     "androidScheme": "https",

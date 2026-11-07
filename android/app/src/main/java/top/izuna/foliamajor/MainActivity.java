@@ -41,6 +41,64 @@ public class MainActivity extends BridgeActivity {
     private long lastTrimMemoryRecordAt = 0L;
     private int lastTrimMemoryLevel = Integer.MIN_VALUE;
 
+    private boolean hardwareBridgeRegistered = false;
+
+    private void configureWebViewPreLoad(WebView webView) {
+        if (webView == null) return;
+        WebView.setWebContentsDebuggingEnabled(true);
+        WebSettings settings = webView.getSettings();
+        try {
+            settings.setDomStorageEnabled(true);
+            settings.setDatabaseEnabled(true);
+            settings.setJavaScriptEnabled(true);
+            settings.setAllowFileAccess(true);
+            settings.setAllowContentAccess(true);
+        } catch (Throwable ignored) {
+        }
+        try {
+            settings.setMediaPlaybackRequiresUserGesture(false);
+        } catch (Throwable ignored) {
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            }
+        } catch (Throwable ignored) {
+        }
+        if (isTvDevice()) {
+            // 必须在 loadUrl 之前设置 UA 和 JavascriptInterface，确保首帧脚本同步读取到 FoliaTV 与 FoliaTvHardware！
+            try {
+                String ua = settings.getUserAgentString();
+                if (ua == null) ua = "";
+                if (!ua.contains("FoliaTV")) {
+                    settings.setUserAgentString(ua + " FoliaTV");
+                }
+            } catch (Throwable ignored) {
+            }
+            if (!hardwareBridgeRegistered) {
+                try {
+                    webView.addJavascriptInterface(new TvHardwareBridge(this, webView), "FoliaTvHardware");
+                    hardwareBridgeRegistered = true;
+                } catch (Throwable ignored) {
+                }
+            }
+            disableSpatialNavigation(settings);
+            if (!AdaptiveLayout.hasExplicitPreference(this)) {
+                AdaptiveLayout.setEnabled(this, true);
+            }
+        }
+    }
+
+    @Override
+    protected void load() {
+        try {
+            WebView preWebView = findViewById(com.getcapacitor.android.R.id.webview);
+            configureWebViewPreLoad(preWebView);
+        } catch (Throwable ignored) {
+        }
+        super.load();
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         CrashDiagnostics.install(getApplicationContext());
@@ -58,42 +116,7 @@ public class MainActivity extends BridgeActivity {
         );
         installWebViewRendererGuard();
         WebView webView = getBridge().getWebView();
-        WebView.setWebContentsDebuggingEnabled(true);
-        WebSettings settings = webView.getSettings();
-        try {
-            settings.setDomStorageEnabled(true);
-            settings.setDatabaseEnabled(true);
-            settings.setJavaScriptEnabled(true);
-        } catch (Throwable ignored) {
-        }
-        try {
-            settings.setMediaPlaybackRequiresUserGesture(false);
-        } catch (Throwable ignored) {
-        }
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-            }
-        } catch (Throwable ignored) {
-        }
-        if (isTvDevice()) {
-            // 电视/盒子/投影仪用 UA 打标：原生在页面第一帧之前就定好了「这是电视」，首启引导默认选哪套
-            // 资料库界面、屏幕常亮默认开不开、遥控器四向导航，都读这个结论，不用等页面起来再问原生。
-            String ua = settings.getUserAgentString();
-            if (ua == null) ua = "";
-            if (!ua.contains("FoliaTV")) {
-                settings.setUserAgentString(ua + " FoliaTV");
-            }
-            webView.addJavascriptInterface(new TvHardwareBridge(this, webView), "FoliaTvHardware");
-            // 关掉 WebView 原生空间导航：它按方向键自己挪 DOM 焦点，遥控器上表现为「按一下方向键，
-            // 焦点跑到搜索框、系统输入法弹出来盖住半个屏幕」。无论哪个 Android 版本都反射尝试关闭，
-            // 方向键统一由页面自己的 tvNavigationEngine 接管。
-            disableSpatialNavigation(settings);
-            // 电视端默认开启沉浸式全屏，消除系统状态栏/导航栏黑边并铺满 1080p/4K 视口。
-            if (!AdaptiveLayout.hasExplicitPreference(this)) {
-                AdaptiveLayout.setEnabled(this, true);
-            }
-        }
+        configureWebViewPreLoad(webView);
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
