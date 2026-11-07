@@ -1,4 +1,10 @@
 import { useEffect } from 'react';
+import { isAndroidTv } from '../platform/runtime';
+import { useExitModalStore } from '../stores/useExitModalStore';
+import { useSettingsModalStore } from '../stores/useSettingsModalStore';
+import { useAppViewStore } from '../stores/useAppViewStore';
+import { useSearchNavigationStore } from '../stores/useSearchNavigationStore';
+import { useCollectionNavigationStore } from '../stores/useCollectionNavigationStore';
 
 type NativeBackPlugin = {
     addListener: (
@@ -71,6 +77,23 @@ export const applyNativeBackPress = (
     return canMoveToBackground ? 'background' : 'exit';
 };
 
+const hasAnyDismissibleLayer = (): boolean => {
+    if (useSettingsModalStore.getState().settingsModalState.isOpen) return true;
+    if (useAppViewStore.getState().view !== 'home') return true;
+    if (useSearchNavigationStore.getState().isSearchOpen) return true;
+    if (Boolean(useCollectionNavigationStore.getState().snapshot?.stack.length)) return true;
+    if (typeof document !== 'undefined') {
+        if (document.querySelector('[data-folia-sheet="true"]:not([inert])')) return true;
+        if (document.querySelector('.st-pop:not([inert])')) return true;
+        if (document.querySelector('[data-folia-studio-window="true"]:not([inert])')) return true;
+        if (document.querySelector('[data-folia-keyboard-window="true"]')) return true;
+        if (document.querySelector('[data-library-renderer="grid"], [data-folia-grid-overlay="true"]')) return true;
+        if (document.querySelector('.lattice-tools-panel:not([inert]), [data-bravais-seam-menu]:not([inert]), [data-bravais-focus-menu]:not([inert])')) return true;
+        if (document.querySelector('[role="dialog"]:not([data-folia-exit-modal="true"])')) return true;
+    }
+    return false;
+};
+
 /**
  * Routes the Android hardware Back through the same keyboard handling the app already uses for
  * Escape. Dialogs and nested settings views close themselves there; when no layer consumes the
@@ -85,6 +108,26 @@ export const useNativeBackButton = (): void => {
         let listenerHandle: { remove: () => Promise<void> } | { remove: () => void } | null = null;
         const registered = plugin.addListener('backButton', () => {
             if (disposed) return;
+
+            // 若退出弹窗已打开，再次按返回键视为取消并关闭弹窗
+            if (useExitModalStore.getState().isOpen) {
+                useExitModalStore.getState().closeExitModal();
+                return;
+            }
+
+            // 电视端如果在根主页且无任何上层弹窗/覆盖层可关，直接呼出退出确认弹窗
+            if (isAndroidTv() && !hasAnyDismissibleLayer()) {
+                void plugin.recordRuntimeDiagnostic?.({
+                    source: 'activity-lifecycle',
+                    thread: 'webview',
+                    type: 'back-to-exit-modal',
+                    message: 'At root TV home view; opening TV exit confirm modal',
+                    stack: '',
+                }).catch(() => undefined);
+                useExitModalStore.getState().openExitModal();
+                return;
+            }
+
             const event = new KeyboardEvent('keydown', {
                 key: 'Escape',
                 code: 'Escape',
@@ -96,8 +139,28 @@ export const useNativeBackButton = (): void => {
                     ? document.activeElement
                     : (document.body ?? document))
                 : window;
-            const handled = !dispatchTarget.dispatchEvent(event) || event.defaultPrevented;
-            applyNativeBackPress(plugin, handled);
+            const dispatchResult = dispatchTarget.dispatchEvent(event);
+            const handled = !dispatchResult || event.defaultPrevented;
+
+            if (handled) {
+                applyNativeBackPress(plugin, true);
+                return;
+            }
+
+            // 根视图下（无任何弹窗、覆盖层可关）：电视端呼出专属退出确认弹窗，手机端退到后台保留播放
+            if (isAndroidTv()) {
+                void plugin.recordRuntimeDiagnostic?.({
+                    source: 'activity-lifecycle',
+                    thread: 'webview',
+                    type: 'back-to-exit-modal',
+                    message: 'No layer handled Escape; opening TV exit confirm modal',
+                    stack: '',
+                }).catch(() => undefined);
+                useExitModalStore.getState().openExitModal();
+                return;
+            }
+
+            applyNativeBackPress(plugin, false);
         });
 
         Promise.resolve(registered)

@@ -578,10 +578,23 @@ public class FoliaNativePlugin extends Plugin {
                 "app-exit",
                 "main",
                 "js-exit-app",
-                "JS back handler requested exit",
+                "Explicit exit app requested",
                 "FoliaNativePlugin.exitApp"
             );
-            activity.runOnUiThread(activity::finish);
+            try {
+                Intent stopIntent = new Intent(activity, FoliaPlaybackService.class);
+                stopIntent.setAction("clear");
+                activity.stopService(stopIntent);
+            } catch (Throwable ignored) {
+            }
+            activity.runOnUiThread(() -> {
+                try {
+                    activity.finishAffinity();
+                    System.exit(0);
+                } catch (Throwable t) {
+                    activity.finish();
+                }
+            });
         }
     }
 

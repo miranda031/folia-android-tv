@@ -1,6 +1,7 @@
 import type { CommandPaletteCommand } from '../types';
 import { defineCommand, createToggleCommand, createHomeTabCommand } from '../commandFactories';
 import { omni } from '../../../services/onlineMusic/omni';
+import { useExitModalStore } from '../../../stores/useExitModalStore';
 
 // src/components/command-palette/commands/navigationCommands.ts
 // Commands in the `navigation` group: moving between home tabs, the player, and window-level views.
@@ -69,5 +70,16 @@ export const navigationCommands: CommandPaletteCommand[] = [
         isAvailable: (context) => !context?.navigation.isWallpaperMode
             && context?.navigation.isWindowAlwaysOnTopSupported !== false,
         execute: (_input, context) => context.navigation.toggleMainWindowAlwaysOnTop(),
+    },
+    {
+        id: 'app-exit',
+        group: 'navigation',
+        title: 'Exit Folia',
+        description: 'Quit application and stop background playback',
+        keywords: ['exit', 'quit', 'close', 'tuichu', '退出', '退出应用', '关闭', '关机'],
+        execute: () => {
+            useExitModalStore.getState().openExitModal();
+            return true;
+        },
     }
 ];

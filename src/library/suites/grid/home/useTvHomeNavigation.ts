@@ -80,13 +80,34 @@ export const useTvHomeNavigation = ({
                 return;
             }
 
+            if (document.querySelector('[data-folia-exit-modal="true"]')) return;
             if (!ARROW_KEYS.has(key) && key !== 'Escape') return;
 
             const itemsNow = latest.current.items;
             const bottomNow = latest.current.bottomItems ?? [];
             const active = document.activeElement;
 
-            // 电视焦点拯救兜底（Focus Rescue Guard）：若由于 DOM 销毁或弹层关闭导致焦点掉到 body，按方向键或返回键立刻恢复至主导航
+            // Escape 键：若焦点在空间内容区，则按返回键回到顶部导航栏；若在顶部栏、底部栏或 body，放行给全局退出/返回逻辑
+            if (key === 'Escape') {
+                const activeIndex = itemsNow.findIndex(item => item.getElement() === active);
+                const bottomIndex = bottomNow.findIndex(item => item.getElement() === active);
+                const inHeader = activeIndex >= 0;
+                const inBottom = bottomIndex >= 0;
+                const spatialRoot = inHeader || inBottom ? null : latest.current.resolveSpatialRoot?.() ?? null;
+                const inSpatial = Boolean(spatialRoot && active instanceof HTMLElement && spatialRoot.contains(active));
+                if (inSpatial && spatialRoot) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const target = itemsNow.find(item => item.id === latest.current.resolveEnterItemId())
+                        ?? itemsNow[0];
+                    target?.getElement()?.focus({ preventScroll: true });
+                    target?.onFocus?.();
+                    return;
+                }
+                return;
+            }
+
+            // 方向键焦点拯救兜底（Focus Rescue Guard）：若由于 DOM 销毁或弹层关闭导致焦点掉到 body，按方向键立刻恢复至主导航
             if (!active || active === document.body) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -108,24 +129,6 @@ export const useTvHomeNavigation = ({
             // 内容区里如果焦点已经落在「自己要走方向键」的那一块（海报轨道），方向键是它的。
             const spatialRoot = inHeader || inBottom ? null : latest.current.resolveSpatialRoot?.() ?? null;
             const inSpatial = Boolean(spatialRoot && active instanceof HTMLElement && spatialRoot.contains(active));
-
-            if (key === 'Escape') {
-                // 空间导航区里：返回键先回到顶部那一行，再按一次才退到后台。
-                if (inSpatial && spatialRoot) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    const target = itemsNow.find(item => item.id === latest.current.resolveEnterItemId())
-                        ?? itemsNow[0];
-                    target?.getElement()?.focus({ preventScroll: true });
-                    target?.onFocus?.();
-                    return;
-                }
-                if (!inHeader && !inBottom) return;
-                event.preventDefault();
-                event.stopPropagation();
-                latest.current.focusContent();
-                return;
-            }
 
             // 方向键一律先按掉默认行为：WebView 的空间导航据此不再自己挪焦点。
             event.preventDefault();

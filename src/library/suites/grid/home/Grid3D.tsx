@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, Loader2, Settings, PanelsTopLeft } from 'lucide-react';
+import { Search, Loader2, Settings, PanelsTopLeft, Power } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { resolveSearchSource, useSearchNavigationStore } from '../../../../stores/useSearchNavigationStore';
+import { useExitModalStore } from '../../../../stores/useExitModalStore';
 import { useShallow } from 'zustand/react/shallow';
 import { SongResult, LocalSong, LocalPlaylist, LocalLibraryGroup, Theme, type StatusMessage } from '../../../../types';
 import LocalGrid3DView from './LocalGrid3DView';
@@ -376,6 +377,7 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
         if (!isAndroidTv()) return [];
         const items: TvHomeNavItem[] = [
             { id: 'settings', getElement: () => settingsButtonRef.current },
+            { id: 'exit-app', getElement: () => document.querySelector<HTMLElement>('[data-tv-nav="exit-app"]') },
         ];
         for (const tab of homeTabs) {
             if (tab.disabledReason) continue;
@@ -472,6 +474,18 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
                                 </span>
                             )}
                         </button>
+                        {isAndroidTv() && (
+                            <button
+                                type="button"
+                                data-tv-nav="exit-app"
+                                onClick={() => useExitModalStore.getState().openExitModal()}
+                                className="relative flex items-center p-2 rounded-full hover:bg-red-500/15 text-white/50 hover:text-red-400 transition-all ml-1.5 focus:outline-none focus:ring-2 focus:ring-red-400 focus:bg-red-500/25 focus:text-red-400"
+                                title="退出应用"
+                                aria-label="退出应用"
+                            >
+                                <Power size={20} />
+                            </button>
+                        )}
                         {scanProgress?.active && (
                             <div
                                 className="relative ml-3"

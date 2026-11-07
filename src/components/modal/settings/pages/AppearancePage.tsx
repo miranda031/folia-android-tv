@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
-import { Check, Cpu, Gauge, Sparkles, Zap } from 'lucide-react';
+import { Check, Cpu, Gauge, Sparkles, Zap, Power } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { getVisualizerModeLabel } from '../../../visualizer/registry';
 import { isAndroidTv } from '../../../../platform/runtime';
+import { useExitModalStore } from '../../../../stores/useExitModalStore';
 import { BUILTIN_THEME_PRESETS, resolveActiveThemePresetId } from '../../../../services/themePresets';
 import {
     formatTvHardwareSummary,
@@ -195,6 +196,21 @@ const AppearancePage: React.FC = () => {
                             </div>
                         )}
                     />
+                    <Row
+                        title="退出应用"
+                        desc="停止后台播放服务并安全关闭退出 Folia TV（亦可在主界面按遥控器返回键呼出）"
+                        onClick={() => useExitModalStore.getState().openExitModal()}
+                    >
+                        <button
+                            type="button"
+                            data-tv-nav="tv-exit-button"
+                            onClick={() => useExitModalStore.getState().openExitModal()}
+                            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-400 font-medium text-xs border border-red-500/30 transition-all"
+                        >
+                            <Power size={13} />
+                            <span>退出应用</span>
+                        </button>
+                    </Row>
                 </Group>
             )}
 

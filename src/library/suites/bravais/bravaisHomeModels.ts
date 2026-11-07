@@ -43,7 +43,8 @@ export type BravaisHomeToolId =
     | 'queue'
     | 'player'
     | 'stage'
-    | 'settings';
+    | 'settings'
+    | 'exit';
 
 export type BravaisHomeTool = {
     id: BravaisHomeToolId;

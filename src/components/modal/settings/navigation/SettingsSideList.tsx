@@ -1,8 +1,9 @@
 import React, { useRef } from 'react';
-import { CircleHelp, Search, X, type LucideIcon } from 'lucide-react';
+import { CircleHelp, Search, X, Power, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDragToScroll } from '../../../../hooks/useDragToScroll';
 import { isAndroidTv } from '../../../../platform/runtime';
+import { useExitModalStore } from '../../../../stores/useExitModalStore';
 import type { SettingsNavGroup, SettingsSectionId } from './settingsNavModel';
 // src/components/modal/settings/navigation/SettingsSideList.tsx
 // The settings' side list: a search field, then the categories under their group names, and Help at
@@ -127,6 +128,17 @@ export const SettingsSideList: React.FC<SettingsSideListProps> = ({
                 ))}
                 <div className="contents md:mt-auto md:block md:pt-3">
                     {renderItem('help', CircleHelp, t('help.title'), onSelectHelp)}
+                    <button
+                        type="button"
+                        data-tv-nav="settings-side"
+                        data-settings-side-id="exit-app"
+                        onClick={() => useExitModalStore.getState().openExitModal()}
+                        className="flex h-8 shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg px-2.5 text-left text-[13px] transition-colors md:w-full text-red-400 hover:text-red-300 hover:bg-red-500/10 active:bg-red-500/20 mt-1"
+                        title="退出应用"
+                    >
+                        <Power size={16} className="hidden shrink-0 md:block opacity-80" />
+                        <span className="truncate">退出应用</span>
+                    </button>
                 </div>
             </nav>
         </aside>

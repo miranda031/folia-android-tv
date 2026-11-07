@@ -3,6 +3,7 @@ package top.izuna.foliamajor;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Build;
 import android.util.DisplayMetrics;
 import android.view.Display;
@@ -131,6 +132,25 @@ public final class TvHardwareBridge {
             try {
                 webView.clearCache(false);
             } catch (Throwable ignored) {
+            }
+        });
+    }
+
+    @JavascriptInterface
+    public void exitApp() {
+        if (activity == null) return;
+        try {
+            Intent stopIntent = new Intent(activity, FoliaPlaybackService.class);
+            stopIntent.setAction("clear");
+            activity.stopService(stopIntent);
+        } catch (Throwable ignored) {
+        }
+        activity.runOnUiThread(() -> {
+            try {
+                activity.finishAffinity();
+                System.exit(0);
+            } catch (Throwable t) {
+                activity.finish();
             }
         });
     }

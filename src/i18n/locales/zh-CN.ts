@@ -834,6 +834,7 @@ export default {
       "visualizer-machi": { "title": "切换到可视化：町景", "description": "切换到町景微缩街景可视化" },
       "desktop-toggle-remote-control": { "title": "切换遥控窗口", "description": "打开或关闭遥控窗口" },
       "desktop-toggle-main-window-always-on-top": { "title": "切换主窗口置顶", "description": "置顶或取消置顶主窗口" },
+      "app-exit": { "title": "退出应用", "description": "停止播放并彻底关闭退出应用" },
       "background-monet-full-overlay": { "title": "背景切换到 莫奈: 全屏叠色", "description": "切换背景到莫奈全屏叠色" },
       "background-monet-half-gradient": { "title": "背景切换到 莫奈: 半屏渐变", "description": "切换背景到莫奈半屏渐变" },
       "background-common": { "title": "背景切换到 通用", "description": "切换背景到通用" },

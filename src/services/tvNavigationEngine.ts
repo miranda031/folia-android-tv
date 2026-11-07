@@ -11,6 +11,7 @@ import { useBravaisUiStore } from '../library/suites/bravais/bravaisUiStore';
 import { setIsPanelOpen, useAppViewStore } from '../stores/useAppViewStore';
 import { useCollectionNavigationStore } from '../stores/useCollectionNavigationStore';
 import { useSearchNavigationStore } from '../stores/useSearchNavigationStore';
+import { useExitModalStore } from '../stores/useExitModalStore';
 import {
     activateTvElement,
     collectTvFocusables,
@@ -1531,6 +1532,16 @@ export function dispatchTvKeyCapture(event: KeyboardEvent): boolean {
     if (!ARROW_KEYS.has(key) && key !== 'Escape') return false;
 
     const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    // 层级 0：专属退出确认弹窗（ExitConfirmModal）
+    const exitModal = queryTopmostVisible('[data-folia-exit-modal="true"]');
+    if (exitModal) {
+        if (key === 'Escape') {
+            useExitModalStore.getState().closeExitModal();
+            return true;
+        }
+        return navigateWithinContainer(exitModal, event, key);
+    }
 
     // 层级 1：展开的 CustomSelect 下拉框（触发器自身监听上下方向键、回车与 Escape）
     const openCombobox = document.querySelector<HTMLElement>('[role="combobox"][aria-expanded="true"]');

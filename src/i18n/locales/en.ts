@@ -834,6 +834,7 @@ export default {
       "visualizer-machi": { "title": "Visualizer: Machi", "description": "Switch to the Machi town dioramas" },
       "desktop-toggle-remote-control": { "title": "Toggle remote control window", "description": "Open or close the remote control window" },
       "desktop-toggle-main-window-always-on-top": { "title": "Toggle main window always on top", "description": "Pin or unpin the main window above other windows" },
+      "app-exit": { "title": "Exit Folia", "description": "Quit application and stop background playback" },
       "background-monet-full-overlay": { "title": "Background: Monet Full Screen Overlay", "description": "Switch background to Monet full screen overlay layout" },
       "background-monet-half-gradient": { "title": "Background: Monet Half Screen Gradient", "description": "Switch background to Monet half screen gradient layout" },
       "background-common": { "title": "Background: Common", "description": "Switch background to general layout" },

@@ -12,6 +12,8 @@ import { selectBravaisHasCurrentSong } from './bravaisBack';
 import { usePlaybackStore } from '../../../stores/usePlaybackStore';
 import { useUpdateIndicator } from '../../../hooks/useUpdateIndicator';
 import { resolveSearchSource, useSearchNavigationStore } from '../../../stores/useSearchNavigationStore';
+import { isAndroidTv } from '../../../platform/runtime';
+import { useExitModalStore } from '../../../stores/useExitModalStore';
 
 // src/library/suites/bravais/useBravaisHomeChrome.ts
 // 首页缝里与来源无关的那一部分（设计稿 §10.5）：五个一级页签与 F6 的循环、全局搜索框（提交走 onSearchCommitted
@@ -141,6 +143,11 @@ export const useBravaisHomeChrome = ({
             label: t('libraryBravaisHome.settings'),
             badge: updateAvailable ? t('options.updateAvailable') : undefined,
             run: () => latest.current.props.onOpenSettings?.('options'),
+        });
+        if (isAndroidTv()) tools.push({
+            id: 'exit',
+            label: '退出应用',
+            run: () => useExitModalStore.getState().openExitModal(),
         });
         return tools;
     }, [hasLattice, hasPlayer, hasSettings, hasStage, stageActive, t, updateAvailable]);
