@@ -197,7 +197,7 @@ public final class ColorOsLyricBridge {
 
     private static String readProp(String key) {
         String value = readPropByReflection(key);
-        if (value != null && !value.isEmpty()) {
+        if (value != null) {
             return value;
         }
         Map<String, String> props = shellProps();

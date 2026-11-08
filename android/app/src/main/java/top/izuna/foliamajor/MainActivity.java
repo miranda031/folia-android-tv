@@ -5,13 +5,21 @@ import android.content.ComponentCallbacks2;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.activity.OnBackPressedCallback;
 
@@ -101,48 +109,173 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        CrashDiagnostics.install(getApplicationContext());
-        clearWebViewCachesAfterAppUpdate();
-        registerPlugin(FoliaNativePlugin.class);
-        registerPlugin(top.izuna.foliamajor.coloros.FoliaColorOsLyricsPlugin.class);
-        super.onCreate(savedInstanceState);
-        CrashDiagnostics.recordText(
-            getApplicationContext(),
-            "activity-lifecycle",
-            "main",
-            "create",
-            "restoredState=" + (savedInstanceState != null),
-            "onCreate"
-        );
-        installWebViewRendererGuard();
-        WebView webView = getBridge().getWebView();
-        configureWebViewPreLoad(webView);
-        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
-            @Override
-            public void handleOnBackPressed() {
-                // Let the WebView close its own settings/effects layer first. When nothing is open the
-                // JS handler now moves the task to the background so playback keeps running; this
-                // finish() only remains as the fallback for a WebView with no backButton listener.
-                if (FoliaNativePlugin.emitBackPressed()) return;
-                CrashDiagnostics.recordText(
-                    getApplicationContext(),
-                    "activity-lifecycle",
-                    "main",
-                    "back-finish",
-                    "Back had no open layer; finishing activity",
-                    "OnBackPressedCallback"
-                );
-                finish();
+        try {
+            setTheme(R.style.AppTheme_NoActionBar);
+        } catch (Throwable ignored) {
+        }
+        try {
+            CrashDiagnostics.install(getApplicationContext());
+        } catch (Throwable ignored) {
+        }
+        try {
+            clearWebViewCachesAfterAppUpdate();
+        } catch (Throwable ignored) {
+        }
+        try {
+            registerPlugin(FoliaNativePlugin.class);
+            registerPlugin(top.izuna.foliamajor.coloros.FoliaColorOsLyricsPlugin.class);
+        } catch (Throwable ignored) {
+        }
+        Throwable superCreateError = null;
+        try {
+            super.onCreate(savedInstanceState);
+        } catch (Throwable error) {
+            superCreateError = error;
+            try {
+                CrashDiagnostics.record(getApplicationContext(), "activity-oncreate", "main", error);
+            } catch (Throwable ignored) {
             }
-        });
-        PhoneLayoutOrientation.apply(this);
-        PhoneFitCutout.apply(this);
-        restoreAdaptiveLayout(webView);
-        // 启动时窗口焦点和系统栏状态还会变一次，只应用一遍会被后面的 inset 恢复覆盖。
-        webView.postDelayed(() -> restoreAdaptiveLayout(webView), 500);
-        webView.postDelayed(() -> restoreAdaptiveLayout(webView), 1500);
-        webView.postDelayed(() -> PhoneFitCutout.apply(this), 500);
-        webView.postDelayed(() -> PhoneFitCutout.apply(this), 1500);
+        }
+        try {
+            CrashDiagnostics.recordText(
+                getApplicationContext(),
+                "activity-lifecycle",
+                "main",
+                "create",
+                "restoredState=" + (savedInstanceState != null),
+                "onCreate"
+            );
+        } catch (Throwable ignored) {
+        }
+        try {
+            getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+                @Override
+                public void handleOnBackPressed() {
+                    if (FoliaNativePlugin.emitBackPressed()) return;
+                    CrashDiagnostics.recordText(
+                        getApplicationContext(),
+                        "activity-lifecycle",
+                        "main",
+                        "back-finish",
+                        "Back had no open layer; finishing activity",
+                        "OnBackPressedCallback"
+                    );
+                    finish();
+                }
+            });
+        } catch (Throwable ignored) {
+        }
+
+        WebView webView = getBridge() != null ? getBridge().getWebView() : null;
+        if (webView == null) {
+            showWebViewFallbackView(superCreateError);
+            return;
+        }
+
+        installWebViewRendererGuard();
+        configureWebViewPreLoad(webView);
+
+        try {
+            PhoneLayoutOrientation.apply(this);
+        } catch (Throwable ignored) {
+        }
+        if (isTvDevice()) {
+            applyTvFullscreen();
+            webView.postDelayed(this::applyTvFullscreen, 500);
+            webView.postDelayed(this::applyTvFullscreen, 1500);
+        } else {
+            PhoneFitCutout.apply(this);
+            restoreAdaptiveLayout(webView);
+            // 启动时窗口焦点和系统栏状态还会变一次，只应用一遍会被后面的 inset 恢复覆盖。
+            webView.postDelayed(() -> restoreAdaptiveLayout(webView), 500);
+            webView.postDelayed(() -> restoreAdaptiveLayout(webView), 1500);
+            webView.postDelayed(() -> PhoneFitCutout.apply(this), 500);
+            webView.postDelayed(() -> PhoneFitCutout.apply(this), 1500);
+        }
+    }
+
+    /**
+     * 电视端安全全屏设置：不触碰手机端刘海屏（DisplayCutout）或 WindowInsetsCompat.Builder 反射，
+     * 避免海信 VIDAA / TCL / 创维等定制电视 WindowManager 在分配窗口表面时异常退出。
+     */
+    private void applyTvFullscreen() {
+        try {
+            Window window = getWindow();
+            if (window == null) return;
+            window.setBackgroundDrawableResource(R.color.foliaWindowBackground);
+            window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            window.clearFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN);
+            View decorView = window.getDecorView();
+            if (decorView != null) {
+                int flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_FULLSCREEN;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                    flags |= View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
+                }
+                decorView.setSystemUiVisibility(flags);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /**
+     * 当极少数精简版电视 ROM 缺失或损坏系统 WebView 组件时，展示原生遥控器可操控的提示界面，
+     * 杜绝因 getBridge() 为 null 抛出 NullPointerException 导致电视系统弹出「启动失败」。
+     */
+    private void showWebViewFallbackView(Throwable cause) {
+        try {
+            applyTvFullscreen();
+            LinearLayout root = new LinearLayout(this);
+            root.setOrientation(LinearLayout.VERTICAL);
+            root.setGravity(Gravity.CENTER);
+            root.setBackgroundColor(Color.parseColor("#09090b"));
+            int pad = (int) (32 * getResources().getDisplayMetrics().density);
+            root.setPadding(pad, pad, pad, pad);
+
+            TextView title = new TextView(this);
+            title.setText("Folia Music · 电视端启动诊断");
+            title.setTextColor(Color.WHITE);
+            title.setTextSize(22f);
+            title.setGravity(Gravity.CENTER);
+            root.addView(title);
+
+            TextView msg = new TextView(this);
+            String detail = cause != null ? (cause.getClass().getSimpleName() + ": " + cause.getMessage()) : "System WebView unavailable";
+            msg.setText("\n当前电视系统的 Android System WebView 组件未能正常初始化。\n设备："
+                + Build.MANUFACTURER + " " + Build.MODEL + " (Android " + Build.VERSION.RELEASE + ", API " + Build.VERSION.SDK_INT + ")\n详情："
+                + detail + "\n\n可按遥控器「确认键」重试启动，或按「返回键」退出。");
+            msg.setTextColor(Color.parseColor("#a1a1aa"));
+            msg.setTextSize(15f);
+            msg.setGravity(Gravity.CENTER);
+            root.addView(msg);
+
+            LinearLayout btnRow = new LinearLayout(this);
+            btnRow.setOrientation(LinearLayout.HORIZONTAL);
+            btnRow.setGravity(Gravity.CENTER);
+            btnRow.setPadding(0, pad / 2, 0, 0);
+
+            Button retryBtn = new Button(this);
+            retryBtn.setText("重试启动");
+            retryBtn.setFocusable(true);
+            retryBtn.setFocusableInTouchMode(true);
+            retryBtn.setOnClickListener(v -> recreate());
+            btnRow.addView(retryBtn);
+
+            Button exitBtn = new Button(this);
+            exitBtn.setText("退出应用");
+            exitBtn.setFocusable(true);
+            exitBtn.setFocusableInTouchMode(true);
+            exitBtn.setOnClickListener(v -> finish());
+            btnRow.addView(exitBtn);
+
+            root.addView(btnRow);
+            setContentView(root);
+            retryBtn.requestFocus();
+        } catch (Throwable ignored) {
+        }
     }
 
     /**
@@ -211,10 +344,6 @@ public class MainActivity extends BridgeActivity {
         File webViewRoot = new File(dataDir, "app_webview/Default");
         String[] cachePaths = {
             "HTTP Cache",
-            "Code Cache",
-            "GPUCache",
-            "DawnGraphiteCache",
-            "DawnWebGPUCache",
             "Service Worker",
             "Cache",
         };
@@ -239,6 +368,7 @@ public class MainActivity extends BridgeActivity {
      * recoverable renderer kill into the app disappearing mid-use.
      */
     private void installWebViewRendererGuard() {
+        if (getBridge() == null) return;
         getBridge().addWebViewListener(new WebViewListener() {
             @Override
             public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
@@ -302,6 +432,13 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
+        if (isTvDevice()) {
+            applyTvFullscreen();
+            if (getBridge() != null && getBridge().getWebView() != null && !getBridge().getWebView().hasFocus()) {
+                getBridge().getWebView().requestFocus();
+            }
+            return;
+        }
         if (getBridge() != null) {
             WebView webView = getBridge().getWebView();
             if (webView != null) {
@@ -470,11 +607,15 @@ public class MainActivity extends BridgeActivity {
         if (hasFocus && getBridge() != null) {
             WebView webView = getBridge().getWebView();
             if (webView != null) {
-                if (isTvDevice() && !webView.hasFocus()) {
-                    webView.requestFocus();
+                if (isTvDevice()) {
+                    applyTvFullscreen();
+                    if (!webView.hasFocus()) {
+                        webView.requestFocus();
+                    }
+                } else {
+                    webView.post(() -> restoreAdaptiveLayout(webView));
+                    webView.post(() -> PhoneFitCutout.apply(this));
                 }
-                webView.post(() -> restoreAdaptiveLayout(webView));
-                webView.post(() -> PhoneFitCutout.apply(this));
             }
         }
     }

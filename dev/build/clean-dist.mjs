@@ -8,6 +8,9 @@
 import { existsSync, readdirSync, rmdirSync, unlinkSync } from 'node:fs';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { applyCapacitorTvPatches } from './patch-capacitor-tv.mjs';
+
+applyCapacitorTvPatches();
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const distDir = resolve(projectRoot, 'dist');

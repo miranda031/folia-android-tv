@@ -17,11 +17,7 @@ if (hasReleaseKeystore) {
 
 android {
     namespace = "top.izuna.foliamajor"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdkVersion rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "top.izuna.foliamajor" + customAppIdSuffix
         minSdkVersion rootProject.ext.minSdkVersion
@@ -54,6 +50,11 @@ android {
             if (hasReleaseKeystore) {
                 signingConfig signingConfigs.release
             }
+        }
+    }
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
         }
     }
 }
