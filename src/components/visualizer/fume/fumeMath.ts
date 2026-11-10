@@ -1,7 +1,7 @@
 // src/components/visualizer/fume/fumeMath.ts
 // Small numeric, easing, grapheme and seeding helpers used across fume.
 
-const graphemeSegmenter = typeof Intl !== 'undefined'
+const graphemeSegmenter = typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function'
     ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
     : null;
 

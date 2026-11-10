@@ -5,7 +5,7 @@
 // → P / R / A / F / N，印尼文 Playlist / Radio / Album / Folder / Navi 同样。短形撞车时（两个页签同一个首字）撞车的
 // 那几个改取前两个字素，仍然很短、但分得开。
 
-const segmenter = typeof Intl !== 'undefined' && 'Segmenter' in Intl
+const segmenter = typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function'
     ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
     : null;
 

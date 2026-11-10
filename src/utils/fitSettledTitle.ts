@@ -26,8 +26,15 @@ export type TitleMetrics = {
     maxLines?: number;
 };
 
-const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
-const graphemesOf = (text: string) => [...segmenter.segment(text)].map(segment => segment.segment);
+const segmenter = typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function'
+    ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+    : null;
+const graphemesOf = (text: string) => {
+    if (segmenter) {
+        return [...segmenter.segment(text)].map(segment => segment.segment);
+    }
+    return Array.from(text);
+};
 
 /**
  * Reads the metrics a fit depends on. `width` is the box the title is heading for; pass null to

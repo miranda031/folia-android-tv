@@ -34,11 +34,21 @@ const nameColumns = (name: string) => {
 };
 
 let wordSegmenter: Intl.Segmenter | null = null;
+const getWordSegmenter = () => {
+    if (!wordSegmenter && typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
+        try {
+            wordSegmenter = new Intl.Segmenter(undefined, { granularity: 'word' });
+        } catch (_) {}
+    }
+    return wordSegmenter;
+};
 
 /** 歌名拆成词，最长的那个词（按字素数，只看文字词）放大，其余原样。 */
 export const splitHeroWord = (title: string): { text: string; hero: boolean }[] => {
-    wordSegmenter ??= new Intl.Segmenter(undefined, { granularity: 'word' });
-    const parts = Array.from(wordSegmenter.segment(title), part => ({ text: part.segment, wordLike: Boolean(part.isWordLike) }));
+    const segmenter = getWordSegmenter();
+    const parts = segmenter
+        ? Array.from(segmenter.segment(title), part => ({ text: part.segment, wordLike: Boolean(part.isWordLike) }))
+        : Array.from(title).map(ch => ({ text: ch, wordLike: !/^\s+$/.test(ch) }));
     let heroIndex = -1;
     let heroLength = 0;
     parts.forEach((part, index) => {
@@ -78,10 +88,12 @@ const PosterSong: React.FC<{ item: BravaisItem; index: number; onPlay?: (key: st
 export const scrapWords = (items: readonly BravaisItem[]) => {
     const used = new Set<string>();
     const words: string[] = [];
+    const segmenter = getWordSegmenter();
     for (const item of items) {
         const title = item.title.trim();
-        wordSegmenter ??= new Intl.Segmenter(undefined, { granularity: 'word' });
-        const titleWords = Array.from(wordSegmenter.segment(title)).filter(part => part.isWordLike).map(part => part.segment);
+        const titleWords = segmenter
+            ? Array.from(segmenter.segment(title)).filter(part => part.isWordLike).map(part => part.segment)
+            : Array.from(title);
         // 排序是稳定的：最长的词里排第一的那个就是放大的那个（splitHeroWord）；整个标题只有一个词时不放大，直接取前两个字。
         const byLength = titleWords.length < 2 ? [] : [...titleWords].sort((a, b) => [...b].length - [...a].length);
         const word = [...byLength, [...title].slice(0, 2).join('')].find(candidate => candidate && !used.has(candidate.toLocaleLowerCase()));

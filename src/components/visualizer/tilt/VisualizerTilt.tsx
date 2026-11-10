@@ -56,7 +56,26 @@ const getAvailableWidth = (): number => {
     return Math.max(320, window.innerWidth) * 0.85;
 };
 
-const GRAPHEME_SEGMENTER = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+const getGraphemeSegmenter = () => {
+    if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
+        try {
+            return new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+        } catch (_) {}
+    }
+    return null;
+};
+const GRAPHEME_SEGMENTER = getGraphemeSegmenter();
+const segmentGraphemes = (text: string): Array<{ segment: string; index: number; isWordLike?: boolean }> => {
+    if (GRAPHEME_SEGMENTER) {
+        return [...GRAPHEME_SEGMENTER.segment(text)];
+    }
+    let offset = 0;
+    return Array.from(text).map(ch => {
+        const item = { segment: ch, index: offset, isWordLike: false };
+        offset += ch.length;
+        return item;
+    });
+};
 
 interface CharTiming {
     charIndex: number;
@@ -101,7 +120,7 @@ const findSegmentWordRange = (charOffset: number, segmentText: string, fullText:
 };
 
 const buildCharTimings = (charOffset: number, segmentText: string, segmentStartTime: number, segmentEndTime: number, activeLine: Line | null): CharTiming[] => {
-    const graphemes = [...GRAPHEME_SEGMENTER.segment(segmentText)];
+    const graphemes = segmentGraphemes(segmentText);
     if (!activeLine || graphemes.length === 0) return [];
 
     const nonSpaceGraphemes = graphemes.filter(g => !/^\s+$/.test(g.segment));
@@ -132,7 +151,7 @@ const buildCharTimings = (charOffset: number, segmentText: string, segmentStartT
                 continue;
             }
 
-            const wordGraphemes = [...GRAPHEME_SEGMENTER.segment(word.text)];
+            const wordGraphemes = segmentGraphemes(word.text);
             const wordNonSpaceCount = wordGraphemes.filter(g => !/^\s+$/.test(g.segment)).length;
             if (wordNonSpaceCount === 0) continue;
 
@@ -370,7 +389,7 @@ const TiltLine: React.FC<{
     const colors = getColors();
 
     const graphemes = useMemo(
-        () => [...GRAPHEME_SEGMENTER.segment(segment.text)],
+        () => segmentGraphemes(segment.text),
         [segment.text]
     );
     let visualIndex = 0;

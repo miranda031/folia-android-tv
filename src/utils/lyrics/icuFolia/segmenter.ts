@@ -39,8 +39,15 @@ const isAlphabeticWord = (piece: string) => ALPHABETIC_WORD.test(piece) && !NOT_
 let icuSegmenter: Intl.Segmenter | null = null;
 
 const icuWordPieces = (text: string): string[] => {
-    icuSegmenter ??= new Intl.Segmenter(undefined, { granularity: 'word' });
-    return Array.from(icuSegmenter.segment(text), part => part.segment);
+    if (!icuSegmenter && typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
+        try {
+            icuSegmenter = new Intl.Segmenter(undefined, { granularity: 'word' });
+        } catch (_) {}
+    }
+    if (icuSegmenter) {
+        return Array.from(icuSegmenter.segment(text), part => part.segment);
+    }
+    return Array.from(text);
 };
 
 /** An engine's answer only counts when it rebuilds its input; anything else falls back to ICU. */

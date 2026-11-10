@@ -64,7 +64,7 @@ export const PARTITA_PREHEAT_WINDOW: VisualizerPreheatWindow = {
 };
 
 const isCJK = (text: string) => /[\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af]/.test(text);
-const graphemeSegmenter = typeof Intl !== 'undefined'
+const graphemeSegmenter = typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function'
     ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
     : null;
 const splitGraphemes = (text: string) => {

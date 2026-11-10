@@ -7,7 +7,7 @@ import type { ResolvedLineRenderTiming } from './cadenzaTypes';
 // src/components/visualizer/cadenza/cadenzaEnvelopes.ts
 // 按播放时间算每个词 / 整行的状态与包络：waiting/active/passed、glow 强度、正文混色、入场离场、passed 漂移。
 
-const graphemeSegmenter = typeof Intl !== 'undefined'
+const graphemeSegmenter = typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function'
     ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
     : null;
 

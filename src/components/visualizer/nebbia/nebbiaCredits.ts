@@ -9,7 +9,7 @@ import type { NebbiaChar, NebbiaSourceLine } from './nebbiaChars';
 export const CREDITS_DELAY = 2.5;
 
 const graphemes = (text: string): string[] => {
-    const seg = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
+    const seg = typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
     return seg ? [...seg.segment(text)].map(s => s.segment) : [...text];
 };
 
@@ -22,7 +22,7 @@ const wordsOf = (text: string, chars: string[]): number[][] => {
     let offset = 0;
     for (const g of chars) { starts.push(offset); offset += g.length; }
     const words: number[][] = [];
-    const seg = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter(undefined, { granularity: 'word' }) : null;
+    const seg = typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, { granularity: 'word' }) : null;
     const pieces = seg ? [...seg.segment(text)].map(p => ({ at: p.index, text: p.segment }))
         : [...text.matchAll(/\S+/g)].map(m => ({ at: m.index ?? 0, text: m[0] }));
     for (const p of pieces) {

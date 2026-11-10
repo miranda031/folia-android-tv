@@ -156,7 +156,7 @@ const monetGraphemeOffsetsCache = new Map<string, number[]>();
 const monetVerticalMetricsCache = new Map<string, number>();
 let monetVerticalMeasureContext: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null = null;
 
-const graphemeSegmenter = typeof Intl !== 'undefined'
+const graphemeSegmenter = typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function'
     ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
     : null;
 

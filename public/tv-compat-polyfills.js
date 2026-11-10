@@ -334,4 +334,112 @@
       }).catch(function () {});
     }
   } catch (_) {}
+
+  // 21. Intl.Segmenter Polyfill (Chrome 87+)
+  // 针对 TCL Q10K / Q9K、海信、创维酷开等内置较低版本 Chromium WebView (Chrome < 87) 的智能电视与盒子，
+  // 补齐完整的 Intl.Segmenter（支持 grapheme 字素与 word 单词粒度分词、可迭代 Segments、isWordLike 及 .containing(index)），
+  // 彻底根除 Uncaught TypeError: Intl.Segmenter is not a constructor 导致的启动受阻与白屏！
+  if (!root.Intl) {
+    root.Intl = {};
+  }
+  if (typeof root.Intl.Segmenter !== 'function') {
+    function Segments(input, granularity) {
+      this._input = String(input != null ? input : '');
+      this._granularity = granularity || 'grapheme';
+      this._segments = [];
+      this._compute();
+    }
+
+    Segments.prototype._compute = function () {
+      var text = this._input;
+      var granularity = this._granularity;
+      var segments = [];
+      if (!text) {
+        this._segments = segments;
+        return;
+      }
+
+      if (granularity === 'word') {
+        var wordRe = null;
+        try {
+          // 优先尝试标准 Unicode 字符类（支持各语种文字匹配）
+          wordRe = new RegExp('[\\p{L}\\p{M}\\p{N}]+|[^\\p{L}\\p{M}\\p{N}\\s]+|\\s+', 'gu');
+        } catch (_) {
+          // 在极老内核上降级使用通用中英日韩正则
+          wordRe = /[a-zA-Z0-9_\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af]+|[^\w\s\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af]+|\s+/g;
+        }
+
+        var match;
+        while ((match = wordRe.exec(text)) !== null) {
+          var seg = match[0];
+          var idx = match.index;
+          var isWordLike = false;
+          try {
+            isWordLike = /[\p{L}\p{M}\p{N}]/u.test(seg);
+          } catch (_) {
+            isWordLike = /[a-zA-Z0-9_\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af]/.test(seg);
+          }
+          segments.push({
+            segment: seg,
+            index: idx,
+            input: text,
+            isWordLike: isWordLike
+          });
+        }
+      } else {
+        // 'grapheme'（字素）与 'sentence' 粒度
+        // Array.from(text) 能正确按 Unicode 码点切分 Emoji 与代理对
+        var codePoints = Array.from(text);
+        var offset = 0;
+        for (var i = 0; i < codePoints.length; i++) {
+          var ch = codePoints[i];
+          segments.push({
+            segment: ch,
+            index: offset,
+            input: text,
+            isWordLike: false
+          });
+          offset += ch.length;
+        }
+      }
+      this._segments = segments;
+    };
+
+    Segments.prototype[Symbol.iterator] = function () {
+      var segments = this._segments;
+      var index = 0;
+      return {
+        next: function () {
+          if (index < segments.length) {
+            return { value: segments[index++], done: false };
+          }
+          return { done: true, value: undefined };
+        }
+      };
+    };
+
+    Segments.prototype.containing = function (index) {
+      var idx = Math.max(0, Math.min(this._input.length - 1, Number(index) || 0));
+      for (var i = 0; i < this._segments.length; i++) {
+        var seg = this._segments[i];
+        if (seg.index <= idx && idx < seg.index + seg.segment.length) {
+          return seg;
+        }
+      }
+      return this._segments[this._segments.length - 1] || null;
+    };
+
+    function Segmenter(locales, options) {
+      if (!(this instanceof Segmenter)) {
+        throw new TypeError("Constructor Intl.Segmenter requires 'new'");
+      }
+      this.granularity = (options && options.granularity) || 'grapheme';
+    }
+
+    Segmenter.prototype.segment = function (input) {
+      return new Segments(input, this.granularity);
+    };
+
+    root.Intl.Segmenter = Segmenter;
+  }
 })(typeof globalThis !== 'undefined' ? globalThis : typeof self !== 'undefined' ? self : window);
