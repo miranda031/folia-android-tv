@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { PlaybackEntryViewOptions } from './PlaybackEntryViewOptions';
@@ -8,6 +8,7 @@ import { useThemeSettingsStore } from '../../../stores/useThemeSettingsStore';
 import { resolveReducedMotion, useMotionSettingsStore } from '../../../stores/useMotionSettingsStore';
 import { confirmOnboardingLibrarySuite } from '../../../library/app/librarySuiteChoice';
 import { OVERLAY_CALM_TRANSITION, OVERLAY_TRANSITION } from '../../shared/overlayEntranceMotion';
+import { focusTvElement } from '../../../utils/tvSpatialFocus';
 import type { Theme } from '../../../types';
 
 // src/components/modal/playback-entry-view/PlaybackEntryViewPrompt.tsx
@@ -58,6 +59,8 @@ export const PlaybackEntryViewPrompt: React.FC<{ theme?: Theme | null }> = ({ th
                     transition={{ duration: 0.3 }}
                     className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4"
                     onClick={closePrompt}
+                    data-folia-playback-prompt="true"
+                    data-testid="playback-entry-view-prompt"
                 >
                     {/* The panel only mounts while open, so every opening starts again on the first page. */}
                     <PromptPanel theme={theme} pages={pages} onClose={closePrompt} />
@@ -79,6 +82,33 @@ const PromptPanel: React.FC<{ theme?: Theme | null; pages: readonly PromptPage[]
     const [direction, setDirection] = useState<1 | -1>(1);
     const page = pages[pageIndex];
     const isLastPage = pageIndex === pages.length - 1;
+    const panelRef = useRef<HTMLDivElement>(null);
+
+    // 挂载或切页时，自动将焦点锁定在当前已选中的卡片（或第一个可用按钮）上，遥控器立即可控
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            const root = panelRef.current;
+            if (!root) return;
+            const selectedBtn = root.querySelector<HTMLElement>('button[aria-pressed="true"]')
+                ?? root.querySelector<HTMLElement>('button:not([disabled])');
+            if (selectedBtn) {
+                focusTvElement(selectedBtn);
+            }
+        }, 80);
+        return () => window.clearTimeout(timer);
+    }, [pageIndex, page]);
+
+    const handleKeyDown = (event: React.KeyboardEvent) => {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            if (pageIndex > 0) {
+                goTo(pageIndex - 1);
+            } else {
+                onClose();
+            }
+        }
+    };
 
     const goTo = (nextIndex: number) => {
         setDirection(nextIndex > pageIndex ? 1 : -1);
@@ -100,15 +130,18 @@ const PromptPanel: React.FC<{ theme?: Theme | null; pages: readonly PromptPage[]
 
     return (
         <motion.div
+            ref={panelRef}
             initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 10 }}
             transition={{ type: 'spring', bounce: 0, duration: 0.5 }}
             onClick={(event) => event.stopPropagation()}
+            onKeyDown={handleKeyDown}
             role="dialog"
             aria-modal="true"
             aria-labelledby="playback-entry-view-prompt-title"
             data-testid="playback-entry-view-prompt"
+            data-folia-playback-prompt="true"
             data-onboarding-page={page}
             className={`${bgClass} border rounded-[2rem] max-w-lg w-full max-h-[85vh] p-8 shadow-2xl relative overflow-y-auto overflow-x-hidden hide-scrollbar`}
         >
@@ -176,7 +209,9 @@ const PromptPanel: React.FC<{ theme?: Theme | null; pages: readonly PromptPage[]
                             type="button"
                             data-testid="playback-entry-view-prompt-back"
                             onClick={() => goTo(pageIndex - 1)}
-                            className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${secondaryBtnClass}`}
+                            className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white ${
+                                isDaylight ? 'focus:ring-offset-zinc-200' : 'focus:ring-offset-[#18181b]'
+                            } focus:scale-105 active:scale-95 ${secondaryBtnClass}`}
                         >
                             {t('playbackEntryView.back')}
                         </button>
@@ -186,7 +221,9 @@ const PromptPanel: React.FC<{ theme?: Theme | null; pages: readonly PromptPage[]
                             type="button"
                             data-testid="playback-entry-view-prompt-confirm"
                             onClick={onClose}
-                            className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${btnClass}`}
+                            className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white ${
+                                isDaylight ? 'focus:ring-offset-zinc-200' : 'focus:ring-offset-[#18181b]'
+                            } focus:scale-105 active:scale-95 ${btnClass}`}
                         >
                             {t('playbackEntryView.confirm')}
                         </button>
@@ -195,7 +232,9 @@ const PromptPanel: React.FC<{ theme?: Theme | null; pages: readonly PromptPage[]
                             type="button"
                             data-testid="playback-entry-view-prompt-next"
                             onClick={() => goTo(pageIndex + 1)}
-                            className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${btnClass}`}
+                            className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white ${
+                                isDaylight ? 'focus:ring-offset-zinc-200' : 'focus:ring-offset-[#18181b]'
+                            } focus:scale-105 active:scale-95 ${btnClass}`}
                         >
                             {t('playbackEntryView.next')}
                         </button>

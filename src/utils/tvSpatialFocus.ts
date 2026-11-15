@@ -137,7 +137,9 @@ export const focusTvElement = (element: HTMLElement): void => {
         element.setAttribute('tabindex', '-1');
     }
     element.focus({ preventScroll: true });
-    element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (typeof element.scrollIntoView === 'function') {
+        element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
 };
 
 /**

@@ -80,7 +80,7 @@ export const useTvHomeNavigation = ({
                 return;
             }
 
-            if (document.querySelector('[data-folia-exit-modal="true"]')) return;
+            if (document.querySelector('[data-folia-exit-modal="true"], [data-folia-playback-prompt="true"], [data-testid="playback-entry-view-prompt"]')) return;
             if (!ARROW_KEYS.has(key) && key !== 'Escape') return;
 
             const itemsNow = latest.current.items;

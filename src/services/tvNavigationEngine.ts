@@ -1505,7 +1505,7 @@ function handleBravaisTvNavigation(bravaisRoot: HTMLElement, event: KeyboardEven
 export function hasActiveTvOverlayOrHigherView(): boolean {
     if (document.querySelector('[role="combobox"][aria-expanded="true"]')) return true;
     if (queryTopmostVisible(
-        '.st-pop:not([inert]), .lattice-tools-panel:not([inert]), [data-bravais-seam-menu]:not([inert]), [data-bravais-focus-menu]:not([inert]), [data-folia-sheet="true"]:not([inert]), [data-folia-studio-window="true"]:not([inert]), [data-folia-settings-panel="true"], [data-folia-keyboard-window="true"]',
+        '[data-folia-exit-modal="true"], [data-folia-playback-prompt="true"], [data-testid="playback-entry-view-prompt"], .st-pop:not([inert]), .lattice-tools-panel:not([inert]), [data-bravais-seam-menu]:not([inert]), [data-bravais-focus-menu]:not([inert]), [data-folia-sheet="true"]:not([inert]), [data-folia-studio-window="true"]:not([inert]), [data-folia-settings-panel="true"], [data-folia-keyboard-window="true"]',
     )) {
         return true;
     }
@@ -1541,6 +1541,34 @@ export function dispatchTvKeyCapture(event: KeyboardEvent): boolean {
             return true;
         }
         return navigateWithinContainer(exitModal, event, key);
+    }
+
+    // 层级 0.5：首启引导提问弹窗（PlaybackEntryViewPrompt：选择资料库界面与播放进入视图）
+    const playbackPrompt = queryTopmostVisible('[data-folia-playback-prompt="true"], [data-testid="playback-entry-view-prompt"]');
+    if (playbackPrompt) {
+        if (key === 'Escape') {
+            // 若当前处于第二页且有「返回」按钮，按返回键回退到第一页
+            const backBtn = playbackPrompt.querySelector<HTMLElement>('[data-testid="playback-entry-view-prompt-back"]');
+            if (backBtn && isTvFocusableVisible(backBtn)) {
+                backBtn.click();
+                return true;
+            }
+            // 否则按返回键触发确认按钮关闭引导（保留当前生效默认项，如TV默认网格），绝不卡死用户
+            const confirmBtn = playbackPrompt.querySelector<HTMLElement>('[data-testid="playback-entry-view-prompt-confirm"]');
+            if (confirmBtn && isTvFocusableVisible(confirmBtn)) {
+                confirmBtn.click();
+                return true;
+            }
+            // 兜底派发 Escape 事件给弹窗内部容器
+            playbackPrompt.dispatchEvent(new KeyboardEvent('keydown', {
+                key: 'Escape',
+                code: 'Escape',
+                bubbles: true,
+                cancelable: true,
+            }));
+            return true;
+        }
+        return navigateWithinContainer(playbackPrompt, event, key);
     }
 
     // 层级 1：展开的 CustomSelect 下拉框（触发器自身监听上下方向键、回车与 Escape）

@@ -50,7 +50,9 @@ export const OnboardingChoiceCards = <Value extends string>({
                     onClick={() => onChange(optionValue)}
                     aria-pressed={isSelected}
                     {...{ [dataAttribute]: optionValue }}
-                    className={`text-left rounded-2xl border p-3 transition-colors ${frameClass}`}
+                    className={`text-left rounded-2xl border p-3 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white ${
+                        isDaylight ? 'focus:ring-offset-zinc-100' : 'focus:ring-offset-[#18181b]'
+                    } focus:scale-[1.03] active:scale-[0.98] ${frameClass}`}
                     style={{
                         borderColor: isSelected
                             ? accentColor
