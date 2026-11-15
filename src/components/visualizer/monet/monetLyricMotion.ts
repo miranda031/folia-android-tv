@@ -1,4 +1,5 @@
 import type { GraphemeTiming } from '../../../utils/lyrics/graphemeTiming';
+import { shouldAllowTvCssFilters } from '../../../services/tvPerformanceProfile';
 
 // src/components/visualizer/monet/monetLyricMotion.ts
 // Absolute-time envelopes shared by the DOM rail and embedded GPU lyrics.
@@ -50,10 +51,11 @@ export function resolveMonetTone(status: 'active' | 'waiting' | 'passed', offset
     if (status === 'active') return { alpha: 1, scale: 1, blur: 0, baseAlpha: 0.34 };
     const distance = Math.max(Math.abs(offset), 1);
     const waiting = status === 'waiting';
+    const allowFilters = shouldAllowTvCssFilters();
     return {
         alpha: waiting ? Math.max(0.36, 0.72 - (distance - 1) * 0.18) : Math.max(0.28, 0.52 - (distance - 1) * 0.12),
         scale: Math.max(0.68, 0.72 * Math.pow(0.9, distance - 1)),
-        blur: waiting ? distance === 1 ? 0.7 : 1.8 + (distance - 2) * 0.8 : 1.1 + (distance - 1) * 0.7,
+        blur: !allowFilters ? 0 : waiting ? distance === 1 ? 0.7 : 1.8 + (distance - 2) * 0.8 : 1.1 + (distance - 1) * 0.7,
         baseAlpha: waiting ? 0.46 : 0.36,
     };
 }

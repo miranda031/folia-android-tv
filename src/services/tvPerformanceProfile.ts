@@ -571,6 +571,16 @@ export function getTvShaderBudget(): TvShaderBudget {
     return SHADER_BUDGETS[tier];
 }
 
+/**
+ * 判定当前环境是否允许在歌词和前景元素上执行每帧变化的动态 CSS 滤镜（如 blur、drop-shadow）。
+ * 在绝大多数电视机型（compat / lite / balanced）上返回 false，彻底消除歌词换行/换词时的 GPU 卷积开销与严重掉帧。
+ */
+export function shouldAllowTvCssFilters(): boolean {
+    if (!isAndroidTv()) return true;
+    const tier = useTvPerformanceStore.getState().effectiveTier;
+    return SHADER_BUDGETS[tier]?.allowPerFrameCssFilter ?? false;
+}
+
 export function useTvShaderBudget(): TvShaderBudget {
     const tier = useTvPerformanceStore(state => state.effectiveTier);
     return SHADER_BUDGETS[isAndroidTv() ? tier : 'high'];

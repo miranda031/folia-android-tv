@@ -16,6 +16,8 @@
 // On by default on Linux only: the drop-shadow glow looks nearly, but not exactly, the same, and
 // elsewhere the leak costs a few MB a day - too little to be worth any visual difference.
 
+import { isAndroidTv } from '../platform/runtime';
+
 export const GLOW_BLUR_QUANTIZE_STORAGE_KEY = 'visualizer_glow_blur_quantize';
 
 /** Linux, desktop or browser - the one platform where the leak ends in a frozen compositor. */
@@ -35,7 +37,7 @@ export const readStoredGlowBlurQuantize = (): boolean => {
     } catch {
         // Storage blocked: fall through to the default.
     }
-    return isLinuxRuntime();
+    return isLinuxRuntime() || isAndroidTv();
 };
 
 // Module-level on purpose, like the frame-rate limiter: the canvas renderers read it every frame and

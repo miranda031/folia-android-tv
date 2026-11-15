@@ -13,6 +13,7 @@ import VisualizerSubtitleOverlay from '../VisualizerSubtitleOverlay';
 import { adjustCladdaghTimeline } from './claddaghTimeline';
 import { buildMeasuredSpacingInfo } from './claddaghLayout';
 import { RingLine } from './CladdaghRingLine';
+import { shouldAllowTvCssFilters } from '../../../services/tvPerformanceProfile';
 
 // src/components/visualizer/claddagh/VisualizerCladdagh.tsx
 
@@ -248,9 +249,9 @@ const VisualizerCladdagh: React.FC<VisualizerSharedProps> = (props) => {
             sharedProps={props}
         >
             <motion.div
-                initial={{ opacity: 0, scale: 0.96, filter: 'blur(4px)' }}
-                animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                exit={{ opacity: 0, scale: 1.04, filter: 'blur(4px)' }}
+                initial={{ opacity: 0, scale: 0.96, filter: shouldAllowTvCssFilters() ? 'blur(4px)' : 'none' }}
+                animate={{ opacity: 1, scale: 1, filter: 'none' }}
+                exit={{ opacity: 0, scale: 1.04, filter: shouldAllowTvCssFilters() ? 'blur(4px)' : 'none' }}
                 transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                 ref={containerRef as any}
                 className="relative flex flex-col items-center justify-center w-full h-full overflow-hidden select-none"

@@ -1,5 +1,6 @@
 import type { Line, Word as WordType } from '../../types';
 import { getLineRenderEndTime, getLineRenderHints } from '../../utils/lyrics/renderHints';
+import { shouldAllowTvCssFilters } from '../../services/tvPerformanceProfile';
 
 // src/components/visualizer/glowWordTiming.ts
 // classic / partita 共用的逐词时序：把歌词管线给的 renderHints 整理成逐帧好用的 profile，
@@ -56,6 +57,39 @@ export const getGlowWordDisplayDuration = (word: WordType, renderProfile: GlowWo
 };
 
 export const getGlowWordLineContainerMotion = (renderProfile: GlowWordRenderProfile | null) => {
+    const allowFilters = shouldAllowTvCssFilters();
+    if (!allowFilters) {
+        if (renderProfile?.lineTransitionMode === 'none') {
+            return {
+                initial: { opacity: 1, scale: 1 },
+                animate: { opacity: 1, scale: 1 },
+                exit: { opacity: 0, scale: 1.02, transition: { duration: 0.12, ease: 'easeOut' as const } },
+            };
+        }
+
+        if (renderProfile?.lineTransitionMode === 'fast') {
+            return {
+                initial: { opacity: 0.4, scale: 0.98 },
+                animate: {
+                    opacity: 1,
+                    scale: 1,
+                    transition: { duration: 0.16, ease: 'easeOut' as const },
+                },
+                exit: {
+                    opacity: 0,
+                    scale: 1.02,
+                    transition: { duration: 0.16, ease: 'easeInOut' as const },
+                },
+            };
+        }
+
+        return {
+            initial: { opacity: 0, scale: 0.96 },
+            animate: { opacity: 1, scale: 1, transition: { duration: 0.22, ease: 'easeOut' as const } },
+            exit: { opacity: 0, scale: 1.04, transition: { duration: 0.2, ease: 'easeIn' as const } },
+        };
+    }
+
     if (renderProfile?.lineTransitionMode === 'none') {
         return {
             initial: { opacity: 1, scale: 1, filter: 'blur(0px)' },

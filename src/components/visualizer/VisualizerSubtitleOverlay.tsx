@@ -12,6 +12,7 @@ import {
 } from '../../utils/lyrics/subtitleTrackStyle';
 import { colorWithAlpha } from './colorMix';
 import { usePlayerSubtitleBottomPx } from '../../hooks/usePlayerBottomBarBottomPx';
+import { isAndroidTv } from '../../platform/runtime';
 
 // Some songs' lyric data carries pure marker/separator lines ("//", "●●●", dashes, stray slashes from
 // instrumental breaks or credits formatting). Those are timing placeholders, never display text: a
@@ -21,7 +22,7 @@ import { usePlayerSubtitleBottomPx } from '../../hooks/usePlayerBottomBarBottomP
 const hasReadableText = (text?: string | null): boolean => !!text && /[\p{L}\p{N}]/u.test(text);
 
 export const getUpcomingLyricsClassName = (blur = true): string => (
-    `truncate max-w-2xl mx-auto transition-all duration-500${blur ? ' blur-[1px]' : ''}`
+    `truncate max-w-2xl mx-auto transition-all duration-500${blur && !isAndroidTv() ? ' blur-[1px]' : ''}`
 );
 
 interface VisualizerSubtitleOverlayProps {
@@ -163,7 +164,7 @@ const VisualizerSubtitleOverlay: React.FC<VisualizerSubtitleOverlayProps> = ({
                 >
                     {rows.length > 0 ? (
                         <div className={contentClassName}>
-                            {subtitleOverlayBackground && (
+                            {subtitleOverlayBackground && !isAndroidTv() && (
                                 <div
                                     aria-hidden="true"
                                     className="pointer-events-none absolute -inset-x-10 -inset-y-6 z-0 blur-2xl"
@@ -206,7 +207,7 @@ const VisualizerSubtitleOverlay: React.FC<VisualizerSubtitleOverlayProps> = ({
                         </div>
                     ) : activeLine && upcomingLines.length > 0 ? (
                         <div className={`${contentClassName} space-y-2`}>
-                            {subtitleOverlayBackground && (
+                            {subtitleOverlayBackground && !isAndroidTv() && (
                                 <div
                                     aria-hidden="true"
                                     className="pointer-events-none absolute -inset-x-10 -inset-y-6 z-0 blur-2xl"

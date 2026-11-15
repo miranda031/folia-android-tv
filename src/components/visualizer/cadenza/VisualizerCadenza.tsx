@@ -23,6 +23,7 @@ import {
     writeOverlayGlyphShadow,
     writeOverlayWord,
 } from './cadenzaOverlayNodes';
+import { shouldAllowTvCssFilters } from '../../../services/tvPerformanceProfile';
 import {
     ACTIVE_PULSE_FREQUENCY,
     buildDomTextShadow,
@@ -437,7 +438,7 @@ const VisualizerCadenza: React.FC<VisualizerProps> = (props) => {
                         text: placement.text,
                         color: textColor,
                         opacity: animatedState.bodyAlpha.toString(),
-                        filter: animatedState.blur > 0.05 ? `blur(${animatedState.blur.toFixed(2)}px)` : 'none',
+                        filter: shouldAllowTvCssFilters() && animatedState.blur > 0.05 ? `blur(${animatedState.blur.toFixed(2)}px)` : 'none',
                     });
 
                     const glowTexts = shouldSplitGlow ? glyphs : [placement.text];

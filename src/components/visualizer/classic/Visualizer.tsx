@@ -14,6 +14,7 @@ import { resolveWordColor } from '../wordColoring';
 import { GlowWord } from '../GlowWord';
 import { getGlowWordLineContainerMotion, resolveGlowWordRenderProfile } from '../glowWordTiming';
 import { buildGlowWordLayoutVariants, glowWordBodyVariants } from '../glowWordVariants';
+import { isAndroidTv } from '../../../platform/runtime';
 
 // This mode is the most straightforward lyric pipeline in the folder.
 // First we ask runtime which line is active right now, then read renderHints from that line,
@@ -271,7 +272,7 @@ const Visualizer: React.FC<VisualizerProps> = (props) => {
 
     const lyricContainerFloat = useMemo(() => {
         const multiplier = resolvedClassicTuning.breathingFloatMultiplier;
-        if (multiplier <= 0) {
+        if (multiplier <= 0 || isAndroidTv()) {
             return null;
         }
 

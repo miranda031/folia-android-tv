@@ -7,6 +7,7 @@ import { type WordColorMatcher } from '../wordColoring';
 import { MONET_SCROLL_TRANSITION, MONET_SUBTITLE_TRACK_STAGGER_S, type PositionedMonetLineEntry } from './monetRailLayout';
 import { composeLineMasks, getClippedTextMask, getEdgeFadeMask, getLineMask } from './monetRailMasks';
 import { MonetTimedTokenSpan } from './MonetRailTokens';
+import { shouldAllowTvCssFilters } from '../../../services/tvPerformanceProfile';
 
 // src/components/visualizer/monet/MonetRailLine.tsx
 // 歌词栏中的一行：位置、缩放、模糊与副字幕轨，按行状态切换静态或扫字渲染。
@@ -59,6 +60,8 @@ export const MonetRailLine: React.FC<{
         event.currentTarget.blur();
     };
 
+    const allowFilters = shouldAllowTvCssFilters();
+
     return (
         <motion.div
             role={canSeek ? 'button' : undefined}
@@ -75,19 +78,19 @@ export const MonetRailLine: React.FC<{
                 opacity: 0,
                 y: entry.y + initialOffset,
                 scale: entry.tone.scale * 0.98,
-                filter: 'blur(5px)',
+                filter: allowFilters ? 'blur(5px)' : 'none',
             }}
             animate={{
                 opacity: entry.tone.opacity,
                 y: entry.y,
                 scale: entry.tone.scale,
-                filter: `blur(${entry.tone.blurPx}px)`,
+                filter: allowFilters && entry.tone.blurPx > 0 ? `blur(${entry.tone.blurPx}px)` : 'none',
             }}
             exit={disableEntryMotion ? undefined : {
                 opacity: 0,
                 y: entry.y + exitOffset,
                 scale: entry.tone.scale * 0.98,
-                filter: 'blur(6px)',
+                filter: allowFilters ? 'blur(6px)' : 'none',
                 transition: { duration: 0.2, ease: [0.32, 0.72, 0, 1] },
             }}
             transition={MONET_SCROLL_TRANSITION}
