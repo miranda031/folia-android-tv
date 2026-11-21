@@ -22,8 +22,8 @@ import { copyText } from '../../../../utils/system/clipboard';
 // is not in pages/index.ts and the search does not list it; the settings window mounts it itself
 // and hands it the two dialogs it opens.
 
-const REPOSITORY_URL = 'https://github.com/whycfawa/folia-android';
-const REPOSITORY_NAME = 'whycfawa/folia-android';
+const REPOSITORY_URL = 'https://github.com/miranda031/folia-android-tv';
+const REPOSITORY_NAME = 'miranda031/folia-android-tv';
 const BUILD_KIND = getBuildKind();
 const VERSION_INFO = (__DOCKER_STACK_VERSION__
     ? `${__APP_VERSION_LABEL__} v${__APP_VERSION__} · Stack ${__DOCKER_STACK_VERSION__} · ${__COMMIT_HASH__}`

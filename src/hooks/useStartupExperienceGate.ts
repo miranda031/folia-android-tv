@@ -3,6 +3,7 @@ import { USER_GUIDE_AUTO_OPEN_VERSION } from '../components/modal/userGuideConte
 import { hasOnboardingLibrarySuiteChoice } from '../library/app/librarySuiteChoice';
 import { requestPlaybackEntryViewPrompt, usePlaybackEntryViewStore } from '../stores/usePlaybackEntryViewStore';
 import { useSettingsModalStore } from '../stores/useSettingsModalStore';
+import { isAndroidTv } from '../platform/runtime';
 
 // src/hooks/useStartupExperienceGate.ts
 
@@ -96,6 +97,22 @@ export const useStartupExperienceGate = () => {
     });
 
     useEffect(() => {
+        // 电视端首次安装零弹窗直达主页：自动将发版说明、资料库界面/播放进入视图提问与 Ponder (Tab) 引导全部记为已完成，
+        // 彻底杜绝首启弹窗在无鼠标电视上拦截遥控器焦点。
+        if (isAndroidTv()) {
+            if (appVersion && lastSeenReleaseNotesVersion !== appVersion) {
+                localStorage.setItem(LAST_SEEN_RELEASE_NOTES_VERSION_STORAGE_KEY, appVersion);
+                setLastSeenReleaseNotesVersion(appVersion);
+            }
+            if (!hasChosenPlaybackEntryView || !hasSeenLibrarySuitePrompt || isPlaybackEntryViewPromptOpen) {
+                usePlaybackEntryViewStore.getState().closePlaybackEntryViewPrompt();
+            }
+            const targetGuideVer = appVersion ?? USER_GUIDE_AUTO_OPEN_VERSION;
+            if (lastSeenPonderVersion !== targetGuideVer) {
+                useSettingsModalStore.getState().setLastSeenGuideVersion(targetGuideVer);
+            }
+            return;
+        }
         if (nextStep === 'release-notes') {
             setIsReleaseNotesOpen(true);
         } else if (nextStep === 'playback-entry-view') {
@@ -103,7 +120,16 @@ export const useStartupExperienceGate = () => {
         } else if (nextStep === 'ponder') {
             setIsPonderOnboardingOpen(true);
         }
-    }, [nextStep, setIsPonderOnboardingOpen]);
+    }, [
+        appVersion,
+        hasChosenPlaybackEntryView,
+        hasSeenLibrarySuitePrompt,
+        isPlaybackEntryViewPromptOpen,
+        lastSeenPonderVersion,
+        lastSeenReleaseNotesVersion,
+        nextStep,
+        setIsPonderOnboardingOpen,
+    ]);
 
     const closeReleaseNotes = useCallback(() => {
         if (appVersion) {

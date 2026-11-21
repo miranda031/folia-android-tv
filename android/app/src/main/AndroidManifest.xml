@@ -95,6 +95,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- 电视与盒子硬件特性全面声明为非强制（兼容无触摸屏、插网线无 Wi-Fi 模块、无麦克风、OpenGL ES 2.0+ 的所有电视与投影仪） -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />

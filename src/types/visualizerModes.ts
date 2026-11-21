@@ -44,6 +44,28 @@ export const BUILTIN_VISUALIZER_BACKGROUND_MODES = [
 export const DEFAULT_VISUALIZER_MODE: VisualizerMode = 'classic';
 export const DEFAULT_VISUALIZER_BACKGROUND_MODE: VisualizerBackgroundMode = 'latent';
 
+/**
+ * 电视端轻量高稳定歌词样式白名单（纯 DOM / CSS 硬件合成渲染，零 Three.js / Pixi / WebGL 离屏帧缓冲开销，彻底杜绝电视端换歌卡顿与显存不足闪退）。
+ */
+export const TV_SAFE_VISUALIZER_MODES = [
+    'classic',
+    'monet',
+    'partita',
+    'tilt',
+    'claddagh',
+    'cappella',
+    'cadenza',
+    'still',
+] as const satisfies readonly VisualizerMode[];
+
+const TV_SAFE_VISUALIZER_MODE_SET: ReadonlySet<string> = new Set(TV_SAFE_VISUALIZER_MODES);
+
+export const isTvSafeVisualizerMode = (mode: unknown): mode is VisualizerMode =>
+    typeof mode === 'string' && TV_SAFE_VISUALIZER_MODE_SET.has(mode);
+
+export const normalizeTvVisualizerMode = (mode: unknown): VisualizerMode =>
+    isTvSafeVisualizerMode(mode) ? mode : DEFAULT_VISUALIZER_MODE;
+
 const VISUALIZER_MODE_SET: ReadonlySet<string> = new Set(BUILTIN_VISUALIZER_MODES);
 const VISUALIZER_BACKGROUND_MODE_SET: ReadonlySet<string> = new Set(BUILTIN_VISUALIZER_BACKGROUND_MODES);
 

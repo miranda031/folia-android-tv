@@ -8,7 +8,9 @@ import {
     DEFAULT_VISUALIZER_MODE,
     isBuiltinVisualizerBackgroundMode,
     isBuiltinVisualizerMode,
+    normalizeTvVisualizerMode,
 } from '../types/visualizerModes';
+import { isAndroidTv } from '../platform/runtime';
 import type { StoredTuning } from '../components/visualizer/tuningDefinition';
 import { resolveSmartBeatSettings, type SmartBeatPatch } from '../services/beatFx/smartBeatSettings';
 import { parseVisualizerFrameRate, VISUALIZER_FRAME_RATE_STORAGE_KEY } from '../utils/frameRateLimiter';
@@ -93,6 +95,10 @@ export const readStoredVisualizerMode = (): VisualizerMode => {
     const saved = localStorage.getItem('visualizer_mode');
     if (saved === 'cadenza' || saved === 'cadenze') {
         return 'cadenza';
+    }
+
+    if (isAndroidTv()) {
+        return normalizeTvVisualizerMode(saved);
     }
 
     return isBuiltinVisualizerMode(saved) ? saved : DEFAULT_VISUALIZER_MODE;

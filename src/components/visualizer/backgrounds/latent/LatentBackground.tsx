@@ -173,7 +173,8 @@ const LatentBackground: React.FC<LatentBackgroundProps> = ({
     const isTv = isAndroidTv();
     const effectiveTier = useTvPerformanceStore(state => state.effectiveTier);
     const tvBudget = useTvShaderBudget();
-    const isCompatMode = isTv && (effectiveTier === 'compat' || !hasWebGl2Support());
+    // 电视端全档位统一走零 WebGL 崩溃风险的纯 CSS GPU 合成极光背景（TvCompatAuroraBackground），保留专辑封面取色与低音呼吸律动
+    const isCompatMode = isTv || effectiveTier === 'compat' || !hasWebGl2Support();
     const showMesh = !isCompatMode && tuning.displayMode !== 'dithering';
     // 电视中低配档位下，当 MeshGradient 开启时跳过第二层全屏 soft-light Dithering WebGL 着色器，省掉整整一个 WebGL 上下文与 TBDR 全屏读回混合
     const showDithering = !isCompatMode && tuning.displayMode !== 'mesh' && (!isTv || !showMesh || tvBudget.allowDualShaderBlend);

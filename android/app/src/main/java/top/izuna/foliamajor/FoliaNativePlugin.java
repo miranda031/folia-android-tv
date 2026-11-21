@@ -1375,4 +1375,123 @@ public class FoliaNativePlugin extends Plugin {
         }
         return user;
     }
+
+    /**
+     * 电视端应用内自动更新 APK 下载：后台流式下载至 cacheDir/updates/ 并实时通过 updateDownloadProgress 事件推送进度。
+     */
+    @PluginMethod
+    public void downloadUpdateApk(PluginCall call) {
+        String url = call.getString("url", "");
+        String fileName = call.getString("fileName", "Folia-Android-TV-update.apk");
+        if (url == null || url.trim().isEmpty()) {
+            call.reject("Update APK URL is required");
+            return;
+        }
+        final String safeName = fileName.replaceAll("[^a-zA-Z0-9._-]", "_");
+        new Thread(() -> {
+            OkHttpClient downloadClient = client.newBuilder()
+                .connectTimeout(25, TimeUnit.SECONDS)
+                .readTimeout(120, TimeUnit.SECONDS)
+                .followRedirects(true)
+                .followSslRedirects(true)
+                .build();
+            Request request = new Request.Builder()
+                .url(url.trim())
+                .header("User-Agent", "Folia-Android-TV-Updater")
+                .get()
+                .build();
+            try (Response response = downloadClient.newCall(request).execute()) {
+                if (!response.isSuccessful() || response.body() == null) {
+                    call.reject("HTTP " + response.code());
+                    return;
+                }
+                ResponseBody body = response.body();
+                long totalBytes = body.contentLength();
+                File updateDir = new File(getContext().getCacheDir(), "updates");
+                if (!updateDir.exists()) {
+                    //noinspection ResultOfMethodCallIgnored
+                    updateDir.mkdirs();
+                }
+                File targetFile = new File(updateDir, safeName);
+                try (InputStream in = body.byteStream();
+                     FileOutputStream out = new FileOutputStream(targetFile)) {
+                    byte[] buffer = new byte[32 * 1024];
+                    long downloaded = 0L;
+                    long lastEmitAt = 0L;
+                    int read;
+                    while ((read = in.read(buffer)) != -1) {
+                        out.write(buffer, 0, read);
+                        downloaded += read;
+                        long now = System.currentTimeMillis();
+                        if (now - lastEmitAt >= 200L || (totalBytes > 0 && downloaded >= totalBytes)) {
+                            lastEmitAt = now;
+                            final long bytesSnap = downloaded;
+                            final int percent = totalBytes > 0
+                                ? (int) Math.min(100L, (downloaded * 100L) / totalBytes)
+                                : -1;
+                            JSObject progress = new JSObject();
+                            progress.put("bytesRead", bytesSnap);
+                            progress.put("totalBytes", totalBytes);
+                            progress.put("percent", percent);
+                            Activity activity = getActivity();
+                            if (activity != null) {
+                                activity.runOnUiThread(() -> notifyListeners("updateDownloadProgress", progress));
+                            }
+                        }
+                    }
+                    out.flush();
+                }
+                // Android 7.0 以下外部包安装器可能需要可读权限
+                //noinspection ResultOfMethodCallIgnored
+                targetFile.setReadable(true, false);
+                JSObject result = new JSObject();
+                result.put("filePath", targetFile.getAbsolutePath());
+                result.put("size", targetFile.length());
+                call.resolve(result);
+            } catch (Throwable error) {
+                call.reject("Download failed: " + error.getMessage());
+            }
+        }, "folia-tv-apk-updater").start();
+    }
+
+    /**
+     * 唤起 Android 原生软件包安装器安装已下载的更新 APK（兼容 Android 5.0 ~ Android 15）。
+     */
+    @PluginMethod
+    public void installUpdateApk(PluginCall call) {
+        String filePath = call.getString("filePath", "");
+        if (filePath == null || filePath.trim().isEmpty()) {
+            call.reject("APK filePath is required");
+            return;
+        }
+        File apkFile = new File(filePath.trim());
+        if (!apkFile.exists() || apkFile.length() <= 0) {
+            call.reject("Downloaded APK file not found");
+            return;
+        }
+        Activity activity = getActivity();
+        Context context = activity != null ? activity : getContext();
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            Uri apkUri;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                apkUri = FileProvider.getUriForFile(
+                    context,
+                    context.getPackageName() + ".fileprovider",
+                    apkFile
+                );
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } else {
+                apkUri = Uri.fromFile(apkFile);
+            }
+            intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+            context.startActivity(intent);
+            JSObject res = new JSObject();
+            res.put("started", true);
+            call.resolve(res);
+        } catch (Throwable error) {
+            call.reject("Failed to launch package installer: " + error.getMessage());
+        }
+    }
 }

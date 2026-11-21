@@ -1,5 +1,6 @@
 import { extractRepresentativeColorsFromPixels } from './colorPalette';
 import { resolveSameOriginImageSource } from '../services/nativeImageFetch';
+import { getCoverIdentity, getSizedCoverUrl } from './coverUrl';
 
 // src/utils/colorExtractor.ts
 
@@ -8,6 +9,21 @@ interface RGB {
     g: number;
     b: number;
 }
+
+const COLOR_EXTRACTION_THUMBNAIL_SIZE = 120;
+const MAX_PIXEL_CACHE_ENTRIES = 64;
+const pixelCache = new Map<string, Uint8ClampedArray>();
+const inflightPixelLoads = new Map<string, Promise<Uint8ClampedArray | null>>();
+
+const rememberPixels = (key: string, pixels: Uint8ClampedArray) => {
+    if (pixelCache.has(key)) {
+        pixelCache.delete(key);
+    } else if (pixelCache.size >= MAX_PIXEL_CACHE_ENTRIES) {
+        const oldestKey = pixelCache.keys().next().value;
+        if (oldestKey !== undefined) pixelCache.delete(oldestKey);
+    }
+    pixelCache.set(key, pixels);
+};
 
 /**
  * 把图片缩到 50×50 读出像素（crossOrigin 匿名请求）。图片加载失败、没有 CORS 头、画布被污染（读像素抛
@@ -53,21 +69,48 @@ const loadPixelsFromUrl = (imageUrl: string, { silent = false }: { silent?: bool
 /**
  * 优先用同源地址读像素：安卓容器里远端封面没有 CORS 头，直接加载会污染画布。
  * 原生桥取回字节转成 blob URL 之后，画布一定可读。
+ * 重要性能优化：取色画布仅需 50×50 像素，必须先用 getSizedCoverUrl 缩为 120×120 缩略图（~3KB）并做内存 LRU 缓存，
+ * 彻底杜绝切歌时重复下载 3000×3000 原图（3~5MB）并在主线程做百万字节 Base64 解码造成的切歌卡顿与内存暴涨。
  */
 export const loadImagePixels = async (
     imageUrl: string,
     options: { silent?: boolean } = {},
 ): Promise<Uint8ClampedArray | null> => {
     const { silent = false } = options;
-    const sameOrigin = await resolveSameOriginImageSource(imageUrl);
-    if (sameOrigin) {
-        try {
-            return await loadPixelsFromUrl(sameOrigin.url, { silent });
-        } finally {
-            sameOrigin.revoke();
+    if (!imageUrl) return null;
+
+    const cacheKey = getCoverIdentity(imageUrl) || imageUrl;
+    const cached = pixelCache.get(cacheKey);
+    if (cached) return cached;
+
+    const existingInflight = inflightPixelLoads.get(cacheKey);
+    if (existingInflight) return existingInflight;
+
+    const sizedUrl = getSizedCoverUrl(imageUrl, COLOR_EXTRACTION_THUMBNAIL_SIZE) || imageUrl;
+    const task = (async (): Promise<Uint8ClampedArray | null> => {
+        const sameOrigin = await resolveSameOriginImageSource(sizedUrl);
+        let pixels: Uint8ClampedArray | null = null;
+        if (sameOrigin) {
+            try {
+                pixels = await loadPixelsFromUrl(sameOrigin.url, { silent });
+            } finally {
+                sameOrigin.revoke();
+            }
+        } else {
+            pixels = await loadPixelsFromUrl(sizedUrl, { silent });
         }
+        if (pixels) {
+            rememberPixels(cacheKey, pixels);
+        }
+        return pixels;
+    })();
+
+    inflightPixelLoads.set(cacheKey, task);
+    try {
+        return await task;
+    } finally {
+        inflightPixelLoads.delete(cacheKey);
     }
-    return await loadPixelsFromUrl(imageUrl, { silent });
 };
 
 const extractVibrantColorsFromPixels = (imageData: Uint8ClampedArray, count: number): string[] => {

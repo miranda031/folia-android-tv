@@ -21,6 +21,7 @@ import { PLAYER_BOTTOM_BAR_BASE_OFFSET_PX, resolvePlayerBottomBarMaxOffset } fro
 import { Button, FoldedGroup, Group, PictureChoice, Reveal, Row, Segmented, Select, Slider, TextField, Toggle, Value, option, type SettingsGroupDef, type SettingsOptionDef } from '../kit';
 import { EntryViewPicture } from './pictures';
 import { useSettingsPage } from './settingsPageContext';
+import { isAndroidTv } from '../../../../platform/runtime';
 
 // src/components/modal/settings/pages/PlayerPage.tsx
 // The 播放页 page: what the playing screen looks like. Which view play opens and the look of the
@@ -188,8 +189,11 @@ const PlayerPage: React.FC = () => {
         }
     };
 
+    const isTv = isAndroidTv();
+
     return (
         <>
+            {!isTv && (
             <Group def={VIEW}>
                 <Row option={O.entryView} hint={t('options.playbackEntryViewDesc')}>
                     <PictureChoice
@@ -234,19 +238,24 @@ const PlayerPage: React.FC = () => {
                     </Row>
                 </Reveal>
             </Group>
+            )}
 
             <Group def={BAR}>
                 <Row option={O.autoHide} note={t('options.autoHidePlayerChromeDesc')}>
                     <Toggle checked={chrome.autoHide} onChange={chrome.setAutoHide} />
                 </Row>
-                <Reveal when={chrome.autoHide}>
-                    <Row sub option={O.autoHideCursor} note={t('options.autoHideCursorWithPlayerChromeDesc')}>
-                        <Toggle checked={chrome.autoHideCursor} onChange={chrome.setAutoHideCursor} />
-                    </Row>
-                </Reveal>
-                <Row option={O.idleCursorHide} note={t('options.hideCursorWhenIdleDesc')}>
-                    <Toggle checked={chrome.hideCursorWhenIdle} onChange={chrome.setHideCursorWhenIdle} />
-                </Row>
+                {!isTv && (
+                    <>
+                        <Reveal when={chrome.autoHide}>
+                            <Row sub option={O.autoHideCursor} note={t('options.autoHideCursorWithPlayerChromeDesc')}>
+                                <Toggle checked={chrome.autoHideCursor} onChange={chrome.setAutoHideCursor} />
+                            </Row>
+                        </Reveal>
+                        <Row option={O.idleCursorHide} note={t('options.hideCursorWhenIdleDesc')}>
+                            <Toggle checked={chrome.hideCursorWhenIdle} onChange={chrome.setHideCursorWhenIdle} />
+                        </Row>
+                    </>
+                )}
                 <Row option={O.barOffset} note={t('options.playerBottomBarOffsetDesc')}>
                     <Button
                         icon={RotateCcw}
@@ -262,12 +271,14 @@ const PlayerPage: React.FC = () => {
                         format={value => `${value}px`}
                     />
                 </Row>
-                <Row
-                    option={O.barReposition}
-                    hint={canReposition ? undefined : t('options.playerBottomBarRepositionUnavailable')}
-                    onClick={requestPositioning}
-                    disabled={!canReposition}
-                />
+                {!isTv && (
+                    <Row
+                        option={O.barReposition}
+                        hint={canReposition ? undefined : t('options.playerBottomBarRepositionUnavailable')}
+                        onClick={requestPositioning}
+                        disabled={!canReposition}
+                    />
+                )}
                 <Row option={O.controlSlots} note={t('options.playerControlSlotsDesc')}>
                     <Select
                         name={t('options.playerControlSlotPrimary')}
@@ -285,12 +296,14 @@ const PlayerPage: React.FC = () => {
             </Group>
 
             <Group def={CARD}>
-                <Row
-                    option={O.cardPosition}
-                    hint={canPositionCard ? undefined : t('options.stageTrackPillRepositionUnavailable')}
-                    onClick={requestCardPosition}
-                    disabled={!canPositionCard}
-                />
+                {!isTv && (
+                    <Row
+                        option={O.cardPosition}
+                        hint={canPositionCard ? undefined : t('options.stageTrackPillRepositionUnavailable')}
+                        onClick={requestCardPosition}
+                        disabled={!canPositionCard}
+                    />
+                )}
                 <Row option={O.cardMode} note={t('options.stageTrackPillDesc')}>
                     <Segmented
                         value={card.mode}
@@ -319,6 +332,7 @@ const PlayerPage: React.FC = () => {
                 </Row>
             </Group>
 
+            {!isTv && (
             <Group def={VIDEO}>
                 <Row
                     option={O.videoEnabled}
@@ -381,6 +395,7 @@ const PlayerPage: React.FC = () => {
                     </Row>
                 </Reveal>
             </Group>
+            )}
 
             <FoldedGroup def={PLAYER_UI}>
                 <Row option={O.hideProgressBar} note={t('options.labHidePlayerUiDesc')}>

@@ -190,6 +190,7 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
 
     const [focusedIndex, setFocusedIndex] = useState(0);
     const gridRootRef = useRef<HTMLDivElement>(null);
+    const contentRootRef = useRef<HTMLDivElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
     // 电视：遥控器在顶部那一行（设置、页签、搜索）里移动时，焦点落在这几个真控件上。
     const settingsButtonRef = useRef<HTMLButtonElement>(null);
@@ -265,8 +266,11 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
 
     const isSearchingActive = isSearching;
 
-    // Background style mappings
-    const mainBg = isDaylight ? 'bg-white/40' : 'bg-black/20';
+    // Background style mappings: 电视端首页使用纯色高对比背景并去掉全屏 backdrop-blur-sm，彻底消除全屏高斯模糊造成的 GPU 掉帧
+    const isTv = isAndroidTv();
+    const mainBg = isTv
+        ? (isDaylight ? 'bg-[#f4f4f5]' : 'bg-[#09090b]')
+        : (isDaylight ? 'bg-white/40' : 'bg-black/20');
     const inputBg = isDaylight ? 'bg-black/5 focus:bg-black/10' : 'bg-white/5 focus:bg-white/10';
     const navPillBg = isDaylight ? 'bg-black/5' : 'bg-white/10';
     const navPillInactiveText = isDaylight ? 'text-black/60 hover:text-black' : 'text-white/60 hover:text-white';
@@ -276,78 +280,92 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
 
     const focusActiveSlider = () => {
         requestAnimationFrame(() => {
-            gridRootRef.current
-                ?.querySelector<HTMLElement>('[data-grid3d-slider]')
-                ?.focus({ preventScroll: true });
-        });
-    };
-
-    // 电视：从顶部那一行回到内容区。没有海报轨道的地方（探索页、空列表）退回整个首页容器，
-    // 否则焦点会一直留在页签上，遥控器就再也下不去了。
-    const tvExploreRoot = (): HTMLElement | null =>
-        gridRootRef.current?.querySelector<HTMLElement>('[data-explore-surface]') ?? null;
-
-    const focusTvContent = () => {
-        requestAnimationFrame(() => {
-            const root = gridRootRef.current;
-            if (!root) return;
-            const header = root.querySelector('[data-folia-home-header="true"]');
-
-            // 1. 探索页：优先落在卡片上
-            const explore = tvExploreRoot();
-            if (explore) {
-                const first = explore.querySelector<HTMLElement>('[data-explore-card]')
-                    ?? collectTvFocusables(explore)[0];
-                if (first) {
-                    focusTvElement(first);
-                    return;
-                }
-            }
-
-            // 2. 3D 海报轨道：优先落在卡片上
-            const slider = root.querySelector<HTMLElement>('[data-grid3d-slider]');
-            if (slider) {
-                const card = slider.querySelector<HTMLElement>('[data-tv-nav="card"], [data-grid3d-index][tabindex="0"]')
-                    ?? slider.querySelector<HTMLElement>('[data-grid3d-index]');
+            const slider = gridRootRef.current?.querySelector<HTMLElement>('[data-grid3d-slider]');
+            if (!slider) return;
+            if (isAndroidTv()) {
+                const card = slider.querySelector<HTMLElement>('[data-grid3d-focused="true"]')
+                    ?? slider.querySelector<HTMLElement>('[data-tv-nav="card"], [data-grid3d-index][tabindex="0"]');
                 if (card) {
                     focusTvElement(card);
                     return;
                 }
-                focusTvElement(slider);
-                return;
             }
-
-            // 3. 非海报轨道/空态：落到内容区第一个可聚焦控件（如导入按钮、扫描按钮、登录按钮等）
-            const focusables = collectTvFocusables(root).filter(el => !header?.contains(el));
-            if (focusables.length > 0) {
-                focusTvElement(focusables[0]);
-                return;
-            }
-
-            // 4. 兜底落到屏幕底栏（播放按钮、命令面板）
-            for (const item of tvBottomItems) {
-                const el = item.getElement();
-                if (el) {
-                    focusTvElement(el);
-                    return;
-                }
-            }
+            slider.focus({ preventScroll: true });
         });
     };
 
-    // 内容区的方向键：海报轨道自己会处理（它维护着自己的选中下标），探索页没有这一层，
-    // 探索页由空间导航按几何位置挪焦点；本地/空列表等非海报轨道也走空间导航。
+    // 电视：从顶部那一行回到内容区。没有海报轨道的地方（探索页、空列表）退回内容区容器，
+    // 否则焦点会一直留在页签上，遥控器就再也下不去了。
+    const tvExploreRoot = (): HTMLElement | null =>
+        gridRootRef.current?.querySelector<HTMLElement>('[data-explore-surface]') ?? null;
+
+    const tryFocusTvContentNow = (): boolean => {
+        const contentRoot = contentRootRef.current ?? gridRootRef.current;
+        if (!contentRoot) return false;
+        const header = gridRootRef.current?.querySelector('[data-folia-home-header="true"]');
+
+        // 1. 探索页：优先落在卡片上
+        const explore = tvExploreRoot();
+        if (explore) {
+            const first = explore.querySelector<HTMLElement>('[data-explore-card]')
+                ?? collectTvFocusables(explore)[0];
+            if (first) {
+                focusTvElement(first);
+                return true;
+            }
+        }
+
+        // 2. 3D 海报轨道：优先落在当前居中选中的卡片上（若为空轨道或加载中则不聚焦无框容器，继续找下方操作按钮）
+        const slider = contentRoot.querySelector<HTMLElement>('[data-grid3d-slider]');
+        if (slider) {
+            const card = slider.querySelector<HTMLElement>('[data-grid3d-focused="true"]')
+                ?? slider.querySelector<HTMLElement>('[data-tv-nav="card"], [data-grid3d-index][tabindex="0"]')
+                ?? slider.querySelector<HTMLElement>('[data-grid3d-index]');
+            if (card) {
+                focusTvElement(card);
+                return true;
+            }
+        }
+
+        // 3. 非海报轨道/空态：落到内容区第一个可聚焦控件（如登录按钮、导入按钮、扫描按钮、二级分类按钮等）
+        const focusables = collectTvFocusables(contentRoot).filter(el =>
+            !header?.contains(el)
+            && el.getAttribute('data-tv-nav') !== 'account-switcher'
+            && el.getAttribute('data-tv-nav') !== 'back-to-player'
+        );
+        if (focusables.length > 0) {
+            focusTvElement(focusables[0]);
+            return true;
+        }
+
+        // 4. 兜底落到屏幕底栏（命令面板、播放按钮、音源切换胶囊）
+        for (const item of tvBottomItems) {
+            const el = item.getElement();
+            if (el) {
+                focusTvElement(el);
+                return true;
+            }
+        }
+        return false;
+    };
+
+    const focusTvContent = () => {
+        if (tryFocusTvContentNow()) return;
+        requestAnimationFrame(() => {
+            tryFocusTvContentNow();
+        });
+    };
+
+    // 内容区的方向键：仅在中间内容区（contentRootRef）内做空间导航，绝不越界串入顶部 Header 或底部 SwitcherPill。
     const resolveTvSpatialRoot = (): HTMLElement | null => {
         if (homeViewTab === 'explore') {
             const explore = tvExploreRoot();
             if (!explore) return null;
             return collectTvFocusables(explore).length ? explore : null;
         }
-        const root = gridRootRef.current;
-        if (root) {
-            const header = root.querySelector('[data-folia-home-header="true"]');
-            const focusables = collectTvFocusables(root).filter(el => !header?.contains(el));
-            if (focusables.length) return root;
+        const contentRoot = contentRootRef.current;
+        if (contentRoot && collectTvFocusables(contentRoot).length > 0) {
+            return contentRoot;
         }
         return null;
     };
@@ -397,14 +415,6 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
         if (!isAndroidTv()) return [];
         return [
             {
-                id: 'palette',
-                getElement: () => {
-                    const button = document.querySelector<HTMLElement>('[data-folia-command-palette-button="true"]');
-                    if (!button || button.getAttribute('aria-hidden') === 'true') return null;
-                    return button;
-                },
-            },
-            {
                 id: 'player-bar',
                 getElement: () => {
                     const playBtn = document.querySelector<HTMLElement>('[data-folia-player-bar-play="true"]');
@@ -440,13 +450,13 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
         resolveSpatialRoot: resolveTvSpatialRoot,
     });
 
-    return (
+        return (
         <div
             ref={gridRootRef}
             tabIndex={-1}
             data-tv-content="true"
             data-ponder-page-scope="grid-page"
-            className={`relative w-full h-full flex flex-col font-sans overflow-hidden ${mainBg} pointer-events-auto backdrop-blur-sm ${bottomPadding}`}
+            className={`relative w-full h-full flex flex-col font-sans overflow-hidden ${mainBg} pointer-events-auto ${isTv ? '' : 'backdrop-blur-sm'} ${bottomPadding}`}
         >
 
             {/* Main Header Container (Fades out when sliding/interacting) */}
@@ -588,7 +598,7 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
                                         {tab.label}
                                     </button>
                                 ))}
-                                {stageEnabled && (
+                                {!isTv && stageEnabled && (
                                     <button
                                         onClick={() => onOpenStagePlayer?.()}
                                         data-stage-active={stageIsActive ? 'true' : 'false'}
@@ -597,13 +607,7 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
                                         <span className="relative z-10">{t('home.stage')}</span>
                                     </button>
                                 )}
-                                {/* 播放队列的海报视图和 Stage 一样属于「去哪儿」，所以它在这一排，
-                                    而不是标题旁的工具图标。没有在播歌曲时队列也是空的，直接不出现。
-                                    平时只占一个图标的宽度，指针悬停或键盘聚焦时才展开文字——这一排
-                                    已经有五个内容 tab，多一个常驻文字就把胶囊撑得太长。点击始终直达。
-                                    在「探索」页签上它打开的是同一面墙，铺的是探索页的条目（探索拼贴）：
-                                    探索页有条目可铺时出现，不看有没有在播歌曲。 */}
-                                {onOpenLattice && (opensExploreWall ? hasExploreWall : currentTrack) && (
+                                {!isTv && onOpenLattice && (opensExploreWall ? hasExploreWall : currentTrack) && (
                                     <button
                                         onClick={() => onOpenLattice(opensExploreWall ? 'explore' : 'queue')}
                                         data-testid="home-lattice-pill"
@@ -679,12 +683,22 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
             </div>
 
             {/* Desktop Canvas Surface */}
-            <div className="flex-1 min-h-0 flex flex-col items-center justify-center relative">
+            <div
+                ref={contentRootRef}
+                data-folia-home-content="true"
+                className="flex-1 min-h-0 flex flex-col items-center justify-center relative w-full"
+            >
                 {isOnlineTab && activeAccountView === 'accountless' ? (
                     <OnlineProviderAccountlessPanel
                         providerLabel={activeProviderLabel}
                         isDaylight={isDaylight}
-                        onSearch={() => searchInputRef.current?.focus()}
+                        onSearch={() => {
+                            if (isAndroidTv() && searchButtonRef.current) {
+                                searchButtonRef.current.click();
+                            } else {
+                                searchInputRef.current?.focus();
+                            }
+                        }}
                     />
                 ) : isOnlineTab && activeAccountView === 'resolving' ? (
                     <div className="flex flex-1 w-full items-center justify-center" aria-busy="true">

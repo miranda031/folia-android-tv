@@ -32,6 +32,7 @@ import LegacyModelsPrompt from './components/modal/LegacyModelsPrompt';
 import { PlaybackEntryViewPrompt } from './components/modal/playback-entry-view/PlaybackEntryViewPrompt';
 import { LatticeFmNotice } from './components/modal/playback-entry-view/LatticeFmNotice';
 import { ExitConfirmModal } from './components/modal/ExitConfirmModal';
+import { TvUpdateModal } from './components/modal/TvUpdateModal';
 import { useStartupExperienceGate } from './hooks/useStartupExperienceGate';
 import { useAppDialogsModel } from './components/app/dialogs/useAppDialogsModel';
 import { useHomeModel } from './components/app/home/useHomeModel';
@@ -3029,6 +3030,7 @@ export default function App() {
             <PlaybackEntryViewPrompt theme={theme} />
             <LatticeFmNotice />
             <ExitConfirmModal isDaylight={isDaylight} />
+            <TvUpdateModal />
         </AppShell>
     );
 }

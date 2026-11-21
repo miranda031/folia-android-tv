@@ -12,6 +12,9 @@ import { setIsPanelOpen, useAppViewStore } from '../stores/useAppViewStore';
 import { useCollectionNavigationStore } from '../stores/useCollectionNavigationStore';
 import { useSearchNavigationStore } from '../stores/useSearchNavigationStore';
 import { useExitModalStore } from '../stores/useExitModalStore';
+import { usePlaybackEntryViewStore } from '../stores/usePlaybackEntryViewStore';
+import { useSettingsModalStore } from '../stores/useSettingsModalStore';
+import { useTvUpdateStore } from './tvAutoUpdateService';
 import {
     activateTvElement,
     collectTvFocusables,
@@ -1505,7 +1508,7 @@ function handleBravaisTvNavigation(bravaisRoot: HTMLElement, event: KeyboardEven
 export function hasActiveTvOverlayOrHigherView(): boolean {
     if (document.querySelector('[role="combobox"][aria-expanded="true"]')) return true;
     if (queryTopmostVisible(
-        '[data-folia-exit-modal="true"], [data-folia-playback-prompt="true"], [data-testid="playback-entry-view-prompt"], .st-pop:not([inert]), .lattice-tools-panel:not([inert]), [data-bravais-seam-menu]:not([inert]), [data-bravais-focus-menu]:not([inert]), [data-folia-sheet="true"]:not([inert]), [data-folia-studio-window="true"]:not([inert]), [data-folia-settings-panel="true"], [data-folia-keyboard-window="true"]',
+        '[data-folia-exit-modal="true"], [data-folia-tv-update-modal="true"], [data-folia-playback-prompt="true"], [data-testid="playback-entry-view-prompt"], .st-pop:not([inert]), .lattice-tools-panel:not([inert]), [data-bravais-seam-menu]:not([inert]), [data-bravais-focus-menu]:not([inert]), [data-folia-sheet="true"]:not([inert]), [data-folia-studio-window="true"]:not([inert]), [data-folia-settings-panel="true"], [data-folia-keyboard-window="true"]',
     )) {
         return true;
     }
@@ -1537,16 +1540,35 @@ export function dispatchTvKeyCapture(event: KeyboardEvent): boolean {
     const exitModal = queryTopmostVisible('[data-folia-exit-modal="true"]');
     if (exitModal) {
         if (key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
             useExitModalStore.getState().closeExitModal();
             return true;
         }
         return navigateWithinContainer(exitModal, event, key);
     }
 
+    // 层级 0.2：电视端版本更新弹窗（TvUpdateModal）
+    const tvUpdateModal = queryTopmostVisible('[data-folia-tv-update-modal="true"]');
+    if (tvUpdateModal) {
+        if (key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            useTvUpdateStore.getState().setIsUpdateModalOpen(false);
+            return true;
+        }
+        return navigateWithinContainer(tvUpdateModal, event, key);
+    }
+
     // 层级 0.5：首启引导提问弹窗（PlaybackEntryViewPrompt：选择资料库界面与播放进入视图）
     const playbackPrompt = queryTopmostVisible('[data-folia-playback-prompt="true"], [data-testid="playback-entry-view-prompt"]');
     if (playbackPrompt) {
         if (key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
             // 若当前处于第二页且有「返回」按钮，按返回键回退到第一页
             const backBtn = playbackPrompt.querySelector<HTMLElement>('[data-testid="playback-entry-view-prompt-back"]');
             if (backBtn && isTvFocusableVisible(backBtn)) {
@@ -1559,16 +1581,24 @@ export function dispatchTvKeyCapture(event: KeyboardEvent): boolean {
                 confirmBtn.click();
                 return true;
             }
-            // 兜底派发 Escape 事件给弹窗内部容器
-            playbackPrompt.dispatchEvent(new KeyboardEvent('keydown', {
-                key: 'Escape',
-                code: 'Escape',
-                bubbles: true,
-                cancelable: true,
-            }));
+            // 第一页仅展示「下一步」按钮时，直接关闭引导弹窗（严禁在 window capture 阶段向子节点重派发冒泡 Escape 造成无限递归栈溢出）
+            usePlaybackEntryViewStore.getState().closePlaybackEntryViewPrompt();
             return true;
         }
         return navigateWithinContainer(playbackPrompt, event, key);
+    }
+
+    // 层级 0.6：Ponder 帮助引导弹窗（UserGuideModal）
+    const ponderModal = queryTopmostVisible('[data-testid="ponder-onboarding"]');
+    if (ponderModal) {
+        if (key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            useSettingsModalStore.getState().setIsUserGuideModalOpen(false);
+            return true;
+        }
+        return navigateWithinContainer(ponderModal, event, key);
     }
 
     // 层级 1：展开的 CustomSelect 下拉框（触发器自身监听上下方向键、回车与 Escape）
@@ -1709,7 +1739,18 @@ export function dispatchTvEnterBubble(event: KeyboardEvent): void {
     if (event.key !== 'Enter' || event.repeat) return;
     if (event.ctrlKey || event.altKey || event.metaKey) return;
     const active = document.activeElement;
-    if (!(active instanceof HTMLElement)) return;
+    if (!(active instanceof HTMLElement) || active === document.body) {
+        if (!event.defaultPrevented) {
+            const rescue = document.querySelector<HTMLElement>(
+                '[data-folia-playback-prompt="true"] button[aria-pressed="true"], [data-folia-home-content="true"] button:not([disabled]), [data-folia-home-header="true"] button[data-tv-nav="tab"]:not([disabled])',
+            );
+            if (rescue && isTvFocusableVisible(rescue)) {
+                focusTvElement(rescue);
+                event.preventDefault();
+            }
+        }
+        return;
+    }
 
     // 当在 Bravais 墙体上按 Enter 展开单曲聚焦卡后，自动将光标移入展开卡内的「立即播放」按钮
     if (active.classList.contains('bravais-field')) {

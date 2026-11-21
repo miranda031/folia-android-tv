@@ -11,6 +11,7 @@ import {
 import { chooseLibrarySuite, listLibrarySuiteOptions, useActiveLibrarySuiteId } from '../../../../library/app/librarySuiteChoice';
 import { isGridLibraryActive, useIsGridLibraryActive } from '../../../../library/app/gridLibraryActive';
 import { hasLibrarySuiteChoice } from '../../../../library/registry';
+import { isAndroidTv } from '../../../../platform/runtime';
 import { omni } from '../../../../services/onlineMusic/omni';
 import { useGridViewSettingsStore } from '../../../../stores/useGridViewSettingsStore';
 import { useHomeLayoutSettingsStore } from '../../../../stores/useHomeLayoutSettingsStore';
@@ -90,7 +91,7 @@ const HomePage: React.FC = () => {
 
     return (
         <>
-            {hasLibrarySuiteChoice() && (
+            {!isAndroidTv() && hasLibrarySuiteChoice() && (
                 <Group def={SUITE} bare>
                     <Row option={O.suite} note={t('options.librarySuiteDesc')}>
                         <Segmented
@@ -101,7 +102,7 @@ const HomePage: React.FC = () => {
                     </Row>
                 </Group>
             )}
-            <BravaisWallGroup />
+            {!isAndroidTv() && <BravaisWallGroup />}
 
             <Group def={HOME}>
                 {/* The entries are one option: one row, a chip for each, named and ordered as the home screen has them. */}

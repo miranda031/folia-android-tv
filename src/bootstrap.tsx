@@ -22,6 +22,8 @@ import { bootNavidromeServerPreset } from './services/navidromeServerPreset';
 import { isNavidromeEnabled } from './services/navidromeService';
 import { setNavidromeEnabledState } from './stores/useLibraryStore';
 import { isMainAppSurface, isObsBrowserSourceSurface, isRemoteControlSurface, obsSourceKind } from './utils/appSurface';
+import { isAndroidTv } from './platform/runtime';
+import { scheduleTvAutoUpdateCheckOnBoot } from './services/tvAutoUpdateService';
 // 副作用 import：store 在模块加载时就把 `<html data-reduce-motion>` 写好并保持同步。放在 bootstrap
 // 而不是 App 里，是因为下面按 URL 挂的根不止 App —— 远程控制窗口的进度辉光也读这个属性。
 import './stores/useMotionSettingsStore';
@@ -69,7 +71,11 @@ const isMainApp = isMainAppSurface;
 const FirstScreenMounted: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     React.useEffect(() => {
         noteFoliumFirstScreenMounted();
-        prewarmVisualizersWhenIdle();
+        scheduleTvAutoUpdateCheckOnBoot();
+        // 电视端不做后台全量 3D/WebGL 着色器预热编译，杜绝首屏后后台密集拉取 70+ chunk 与编译着色器阻塞遥控器主线程
+        if (!isAndroidTv()) {
+            prewarmVisualizersWhenIdle();
+        }
     }, []);
     return <>{children}</>;
 };
@@ -106,8 +112,8 @@ if (isMainApp) installPlaybackHeartbeat();
 if (isMainApp) installLibrarySuiteChromeCommands();
 
 // 保存的歌词样式可以趁首屏加载遮罩还在时先准备（雾笺在后台编着色器，见 visualizer/prewarmVisualizers.ts）。
-// 不等它，和下面的 mod 加载一起跑；别的启动慢的样式等首屏出来、页面空闲时再准备（FirstScreenMounted）。
-if (isMainApp) prewarmSavedVisualizer();
+// 电视端跳过后台预热，只在真正进入播放页时按需加载当前轻量样式。
+if (isMainApp && !isAndroidTv()) prewarmSavedVisualizer();
 
 const bootFolium = async () => {
     if (!isMainApp) return;

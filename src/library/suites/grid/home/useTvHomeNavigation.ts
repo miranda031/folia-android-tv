@@ -62,6 +62,24 @@ export const useTvHomeNavigation = ({
     useEffect(() => {
         if (!isActive) return;
 
+        // 首页挂载或弹窗关闭回到首页时，若焦点悬空在 document.body 上，自动聚焦当前激活的顶部页签，确保一进电视界面即有清晰白色焦点环
+        const ensureHomeInitialFocus = () => {
+            if (hasActiveTvOverlayOrHigherView()) return;
+            if (document.querySelector('[data-folia-exit-modal="true"], [data-folia-playback-prompt="true"], [data-testid="playback-entry-view-prompt"]')) return;
+            const active = document.activeElement;
+            if (!active || active === document.body) {
+                const itemsNow = latest.current.items;
+                const rescueTarget = itemsNow.find(item => item.id === latest.current.resolveEnterItemId())
+                    ?? itemsNow[0];
+                const el = rescueTarget?.getElement();
+                if (el) {
+                    focusTvElement(el);
+                }
+            }
+        };
+        const rafId = window.requestAnimationFrame(ensureHomeInitialFocus);
+        const timerId = window.setTimeout(ensureHomeInitialFocus, 180);
+
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.ctrlKey || event.altKey || event.metaKey) return;
             const key = event.key;
@@ -128,7 +146,9 @@ export const useTvHomeNavigation = ({
 
             // 内容区里如果焦点已经落在「自己要走方向键」的那一块（海报轨道），方向键是它的。
             const spatialRoot = inHeader || inBottom ? null : latest.current.resolveSpatialRoot?.() ?? null;
-            const inSpatial = Boolean(spatialRoot && active instanceof HTMLElement && spatialRoot.contains(active));
+            const ownerSlider = !inHeader && !inBottom && active instanceof HTMLElement
+                ? active.closest<HTMLElement>('[data-grid3d-slider]')
+                : null;
 
             // 方向键一律先按掉默认行为：WebView 的空间导航据此不再自己挪焦点。
             event.preventDefault();
@@ -143,7 +163,7 @@ export const useTvHomeNavigation = ({
                 event.stopPropagation();
                 if (spatialRoot && active instanceof HTMLElement) {
                     const target = findTvFocusTarget(spatialRoot, spatialRoot.contains(active) ? active : null, 'up');
-                    if (target) {
+                    if (target && (!ownerSlider || !ownerSlider.contains(target))) {
                         focusTvElement(target);
                         return;
                     }
@@ -159,11 +179,13 @@ export const useTvHomeNavigation = ({
             if (key === 'ArrowDown') {
                 if (inBottom) return;
                 if (!inHeader) {
-                    if (spatialRoot && active instanceof HTMLElement) {
+                    if (!ownerSlider && spatialRoot && active instanceof HTMLElement) {
                         const target = findTvFocusTarget(spatialRoot, spatialRoot.contains(active) ? active : null, 'down');
                         if (target) {
                             event.stopPropagation();
-                            focusTvElement(target);
+                            const targetSlider = target.closest<HTMLElement>('[data-grid3d-slider]');
+                            const preferred = targetSlider?.querySelector<HTMLElement>('[data-grid3d-focused="true"]') ?? target;
+                            focusTvElement(preferred);
                             return;
                         }
                     }
@@ -178,11 +200,31 @@ export const useTvHomeNavigation = ({
                 return;
             }
 
-            // ← →：顶部或底部那一行里换控件；内容区里交给海报轨道或探索网格处理。
+            // ← →：顶部或底部那一行里换控件；3D 海报轨道按 data-grid3d-index 精确逐张推进；探索网格等走空间导航。
             if (!inHeader) {
                 if (inBottom) {
                     event.stopPropagation();
                     moveFocus(bottomNow, bottomIndex, key === 'ArrowRight' ? 1 : -1);
+                    return;
+                }
+                if (ownerSlider) {
+                    event.stopPropagation();
+                    const activeCard = active instanceof HTMLElement ? active.closest<HTMLElement>('[data-grid3d-index]') : null;
+                    const currentIdxAttr = activeCard?.getAttribute('data-grid3d-index');
+                    const currentIdx = currentIdxAttr !== null && currentIdxAttr !== undefined ? Number(currentIdxAttr) : NaN;
+                    const delta = key === 'ArrowRight' ? 1 : -1;
+                    if (Number.isFinite(currentIdx)) {
+                        const nextCard = ownerSlider.querySelector<HTMLElement>(`[data-grid3d-index="${currentIdx + delta}"]`);
+                        if (nextCard) {
+                            focusTvElement(nextCard);
+                        }
+                    } else {
+                        const focusedCard = ownerSlider.querySelector<HTMLElement>('[data-grid3d-focused="true"]')
+                            ?? ownerSlider.querySelector<HTMLElement>('[data-grid3d-index]');
+                        if (focusedCard) {
+                            focusTvElement(focusedCard);
+                        }
+                    }
                     return;
                 }
                 const direction = tvDirectionOf(key);
@@ -204,7 +246,11 @@ export const useTvHomeNavigation = ({
         };
 
         window.addEventListener('keydown', handleKeyDown, { capture: true });
-        return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+        return () => {
+            window.cancelAnimationFrame(rafId);
+            window.clearTimeout(timerId);
+            window.removeEventListener('keydown', handleKeyDown, { capture: true });
+        };
     }, [isActive]);
 };
 

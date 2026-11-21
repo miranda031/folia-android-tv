@@ -14,6 +14,7 @@ import type { PlaybackEntryView } from '../../../stores/usePlaybackEntryViewStor
 type PlaybackEntryViewOptionsProps = {
     value: PlaybackEntryView;
     onChange: (view: PlaybackEntryView) => void;
+    onActivateCard?: (view: PlaybackEntryView) => void;
     isDaylight: boolean;
     accentColor: string;
 };
@@ -27,6 +28,7 @@ const OPTIONS: Array<{ value: PlaybackEntryView; art: OnboardingChoiceArt; i18nK
 export const PlaybackEntryViewOptions: React.FC<PlaybackEntryViewOptionsProps> = ({
     value,
     onChange,
+    onActivateCard,
     isDaylight,
     accentColor,
 }) => {
@@ -43,6 +45,7 @@ export const PlaybackEntryViewOptions: React.FC<PlaybackEntryViewOptionsProps> =
             cards={cards}
             value={value}
             onChange={onChange}
+            onActivateCard={onActivateCard}
             isDaylight={isDaylight}
             accentColor={accentColor}
             dataAttribute="data-playback-entry-view"

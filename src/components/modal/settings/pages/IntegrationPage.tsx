@@ -1,6 +1,7 @@
 import React from 'react';
 import { getColorOsLyricsSupport } from '../../../../platform/foliaColorOsLyrics';
 import { IS_ANDROID_WEBVIEW } from '../../../../utils/platform';
+import { isAndroidTv } from '../../../../platform/runtime';
 import { useTranslation } from 'react-i18next';
 import { usePlaybackReportReady } from '../../../../services/onlineMusic/playbackReportGate';
 import { useAudioSettingsStore } from '../../../../stores/useAudioSettingsStore';
@@ -39,16 +40,17 @@ const IntegrationPage: React.FC = () => {
     const canScrobble = usePlaybackReportReady();
     // ColorOS 16+ 的锁屏歌词是原生自动启用的；这里只显示探测结果，不给手动开关。
     const [colorOsSupport, setColorOsSupport] = React.useState<{ supported: boolean; colorOsMajor: number } | null>(null);
+    const isTv = isAndroidTv();
     React.useEffect(() => {
-        if (!IS_ANDROID_WEBVIEW) return;
+        if (!IS_ANDROID_WEBVIEW || isTv) return;
         void getColorOsLyricsSupport().then(result => setColorOsSupport({ supported: result.supported, colorOsMajor: result.colorOsMajor }));
-    }, []);
+    }, [isTv]);
 
     return (
         <>
             <Group def={SERVICES}>
                 <NavidromeRows />
-                <SyncServerRows />
+                {!isTv && <SyncServerRows />}
                 {isElectron && (
                     <>
                         <Row option={O.discord} hint={t('options.discordRichPresenceDesc')}>
@@ -66,7 +68,7 @@ const IntegrationPage: React.FC = () => {
                         </Reveal>
                     </>
                 )}
-                {IS_ANDROID_WEBVIEW && (
+                {IS_ANDROID_WEBVIEW && !isTv && (
                     <Row option={O.colorOsLyrics} hint={t(colorOsSupport?.supported ? 'options.colorOsLyricsActiveDesc' : 'options.colorOsLyricsDesc')}>
                         {colorOsSupport && (
                             <Status tone={colorOsSupport.supported ? 'ok' : undefined}>
@@ -86,6 +88,7 @@ const IntegrationPage: React.FC = () => {
                 </Row>
             </Group>
 
+            {!isTv && (
             <Group def={STREAMING}>
                 <Row option={O.transparentBackground} hint={t('options.transparentPlayerBackgroundDesc')}>
                     <Toggle checked={transparentPlayerBackground} onChange={onToggleTransparentPlayerBackground} />
@@ -144,6 +147,7 @@ const IntegrationPage: React.FC = () => {
                 )}
                 {isElectron ? <DesktopStageRows /> : <WebStageRows />}
             </Group>
+            )}
         </>
     );
 };

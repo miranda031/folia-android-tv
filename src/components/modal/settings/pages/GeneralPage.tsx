@@ -1,9 +1,11 @@
 import React from 'react';
-import { RefreshCw } from 'lucide-react';
+import { Download, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { useAndroidLayoutSettingsStore } from '../../../../stores/useAndroidLayoutSettingsStore';
 import { IS_ANDROID_WEBVIEW } from '../../../../utils/platform';
+import { isAndroidTv } from '../../../../platform/runtime';
+import { useTvUpdateStore } from '../../../../services/tvAutoUpdateService';
 import type { AppLanguagePreference } from '../../../../i18n/config';
 import { useAudioSettingsStore } from '../../../../stores/useAudioSettingsStore';
 import { usePlayerChromeSettingsStore } from '../../../../stores/usePlayerChromeSettingsStore';
@@ -100,6 +102,24 @@ const GeneralPage: React.FC = () => {
 
     const isInternalBuild = electronSettings.UPDATE_CHANNEL === 'internal';
     const autoUpdateSupported = Boolean(updateStatus?.autoUpdateSupported);
+    const isTv = isAndroidTv();
+    const tvUpdate = useTvUpdateStore(useShallow(state => ({
+        enableUpdateCheck: state.enableUpdateCheck,
+        enableAutoUpdate: state.enableAutoUpdate,
+        useMirrorAcceleration: state.useMirrorAcceleration,
+        status: state.status,
+        currentVersion: state.currentVersion,
+        latestVersion: state.latestVersion,
+        downloadProgress: state.downloadProgress,
+        errorMessage: state.errorMessage,
+        setEnableUpdateCheck: state.setEnableUpdateCheck,
+        setEnableAutoUpdate: state.setEnableAutoUpdate,
+        setUseMirrorAcceleration: state.setUseMirrorAcceleration,
+        setIsUpdateModalOpen: state.setIsUpdateModalOpen,
+        checkForUpdates: state.checkForUpdates,
+        downloadUpdate: state.downloadUpdate,
+        installDownloadedUpdate: state.installDownloadedUpdate,
+    })));
 
     return (
         <>
@@ -132,12 +152,14 @@ const GeneralPage: React.FC = () => {
                         <Toggle checked={openPlayerOnLaunch} onChange={onToggleOpenPlayerOnLaunch} />
                     </Row>
                 )}
-                <Row option={O.titlebarButtons} hint={t('options.alwaysShowMainWindowTitlebarDesc')}>
-                    <Toggle checked={titlebarButtons} onChange={setTitlebarButtons} />
-                </Row>
+                {!isTv && (
+                    <Row option={O.titlebarButtons} hint={t('options.alwaysShowMainWindowTitlebarDesc')}>
+                        <Toggle checked={titlebarButtons} onChange={setTitlebarButtons} />
+                    </Row>
+                )}
             </Group>
 
-            {/* Android 外壳：与上游设置页同一套 Group/Row 控件，桌面上整组不渲染。 */}
+            {/* Android 外壳：与上游设置页同一套 Group/Row 控件，桌面上整组不渲染；电视端精简掉手机刘海与命令面板开关。 */}
             {IS_ANDROID_WEBVIEW && (
                 <Group def={ANDROID_SHELL}>
                     <Row option={O.androidAdaptiveDisplay} hint={t('options.adaptiveDisplayDesc')}>
@@ -147,26 +169,133 @@ const GeneralPage: React.FC = () => {
                     <Row option={O.androidKeepScreenOn} hint={t('options.keepScreenOnDesc')}>
                         <Toggle checked={keepScreenOnEnabled} onChange={setKeepScreenOnEnabled} />
                     </Row>
-                    <Row option={O.androidPhoneFit} hint={t('options.phoneFitDesc')}>
-                        <Toggle checked={phoneFitEnabled} onChange={setPhoneFitEnabled} />
+                    {!isTv && (
+                        <>
+                            <Row option={O.androidPhoneFit} hint={t('options.phoneFitDesc')}>
+                                <Toggle checked={phoneFitEnabled} onChange={setPhoneFitEnabled} />
+                            </Row>
+                            <Row option={O.androidCommandPaletteAutoHide} hint={t('options.autoHideCommandPaletteButtonDesc')}>
+                                <Toggle
+                                    checked={autoHideCommandPaletteButton}
+                                    onChange={handleToggleAutoHideCommandPaletteButton}
+                                />
+                            </Row>
+                            {phoneFitEnabled && (
+                                <Row option={O.androidOrientation} hint={t('options.orientationFitDesc')}>
+                                    <Segmented
+                                        value={phoneFitOrientation}
+                                        options={[
+                                            { value: 'portrait', label: t('options.orientationPortrait') },
+                                            { value: 'landscape', label: t('options.orientationLandscape') },
+                                        ]}
+                                        onChange={setPhoneFitOrientation}
+                                    />
+                                </Row>
+                            )}
+                        </>
+                    )}
+                </Group>
+            )}
+
+            {/* Android / 电视端原生在线更新与自动更新设定 */}
+            {(IS_ANDROID_WEBVIEW || isTv) && (
+                <Group
+                    def={{ id: 'tvAutoUpdate', titleKey: 'options.updateCheck' }}
+                    action={(
+                        <Button
+                            variant="quiet"
+                            icon={RefreshCw}
+                            onClick={() => void tvUpdate.checkForUpdates({ silent: false })}
+                            disabled={tvUpdate.status === 'checking' || tvUpdate.status === 'downloading'}
+                        >
+                            {tvUpdate.status === 'checking'
+                                ? '正在检查...'
+                                : tvUpdate.status === 'downloading'
+                                    ? `下载中 ${tvUpdate.downloadProgress}%`
+                                    : tvUpdate.status === 'available' || tvUpdate.status === 'downloaded'
+                                        ? `新版本 v${tvUpdate.latestVersion}`
+                                        : '立即检查更新'}
+                        </Button>
+                    )}
+                >
+                    <Row
+                        label="当前版本与在线升级"
+                        hint={
+                            tvUpdate.status === 'available'
+                                ? `发现新版本 v${tvUpdate.latestVersion}（当前 v${tvUpdate.currentVersion}）`
+                                : tvUpdate.status === 'downloaded'
+                                    ? `新版本 v${tvUpdate.latestVersion} 更新包已下载就绪`
+                                    : tvUpdate.status === 'downloading'
+                                        ? `正在后台下载更新包 (${tvUpdate.downloadProgress}%)`
+                                        : tvUpdate.status === 'up-to-date'
+                                            ? `当前已是最新版本 (v${tvUpdate.currentVersion})`
+                                            : tvUpdate.status === 'error'
+                                                ? (tvUpdate.errorMessage || '检查更新遇到网络问题，可开启镜像加速后重试')
+                                                : `当前版本 v${tvUpdate.currentVersion}`
+                        }
+                    >
+                        {tvUpdate.status === 'downloaded' ? (
+                            <Button
+                                variant="primary"
+                                icon={Download}
+                                onClick={() => void tvUpdate.installDownloadedUpdate()}
+                            >
+                                立即安装更新
+                            </Button>
+                        ) : tvUpdate.status === 'available' ? (
+                            <Button
+                                variant="primary"
+                                icon={Download}
+                                onClick={() => {
+                                    tvUpdate.setIsUpdateModalOpen(true);
+                                    void tvUpdate.downloadUpdate({ autoInstall: true });
+                                }}
+                            >
+                                下载并更新
+                            </Button>
+                        ) : (
+                            <Button
+                                icon={RefreshCw}
+                                onClick={() => void tvUpdate.checkForUpdates({ silent: false })}
+                                disabled={tvUpdate.status === 'checking' || tvUpdate.status === 'downloading'}
+                            >
+                                {tvUpdate.status === 'checking' ? '正在检查...' : '检查更新'}
+                            </Button>
+                        )}
                     </Row>
-                    <Row option={O.androidCommandPaletteAutoHide} hint={t('options.autoHideCommandPaletteButtonDesc')}>
+
+                    <Row
+                        option={O.updateCheck}
+                        hint="每次启动电视应用时自动在后台检查是否有新版本发布"
+                    >
                         <Toggle
-                            checked={autoHideCommandPaletteButton}
-                            onChange={handleToggleAutoHideCommandPaletteButton}
+                            checked={tvUpdate.enableUpdateCheck}
+                            onChange={tvUpdate.setEnableUpdateCheck}
                         />
-                    </Row>                    {phoneFitEnabled && (
-                        <Row option={O.androidOrientation} hint={t('options.orientationFitDesc')}>
-                            <Segmented
-                                value={phoneFitOrientation}
-                                options={[
-                                    { value: 'portrait', label: t('options.orientationPortrait') },
-                                    { value: 'landscape', label: t('options.orientationLandscape') },
-                                ]}
-                                onChange={setPhoneFitOrientation}
+                    </Row>
+
+                    <Reveal when={tvUpdate.enableUpdateCheck}>
+                        <Row
+                            sub
+                            option={O.autoUpdate}
+                            hint="发现新版本时自动在后台下载 APK 更新包并弹出遥控器一键安装提示"
+                        >
+                            <Toggle
+                                checked={tvUpdate.enableAutoUpdate}
+                                onChange={tvUpdate.setEnableAutoUpdate}
                             />
                         </Row>
-                    )}
+                    </Reveal>
+
+                    <Row
+                        label="国内镜像加速下载"
+                        hint="下载更新包时自动优选高速镜像源，连接失败时自动回退官方源"
+                    >
+                        <Toggle
+                            checked={tvUpdate.useMirrorAcceleration}
+                            onChange={tvUpdate.setUseMirrorAcceleration}
+                        />
+                    </Row>
                 </Group>
             )}
             {isElectron && (
@@ -222,22 +351,24 @@ const GeneralPage: React.FC = () => {
                 </Group>
             )}
 
-            <Group def={PONDER}>
-                <Row option={O.ponderHints} hint={t('options.ponderHintsDesc')}>
-                    <Segmented
-                        value={ponder.ponderHintVisibility}
-                        options={[
-                            { value: 'always', label: t('options.ponderHintsAlways') },
-                            { value: 'unseen', label: t('options.ponderHintsUnseen') },
-                            { value: 'off', label: t('options.ponderHintsOff') },
-                        ]}
-                        onChange={ponder.setPonderHintVisibility}
-                    />
-                </Row>
-                <Row option={O.ponderTouchButton} hint={t('options.ponderTouchButtonDesc')}>
-                    <Toggle checked={ponder.showPonderTouchButton} onChange={ponder.setShowPonderTouchButton} />
-                </Row>
-            </Group>
+            {!isTv && (
+                <Group def={PONDER}>
+                    <Row option={O.ponderHints} hint={t('options.ponderHintsDesc')}>
+                        <Segmented
+                            value={ponder.ponderHintVisibility}
+                            options={[
+                                { value: 'always', label: t('options.ponderHintsAlways') },
+                                { value: 'unseen', label: t('options.ponderHintsUnseen') },
+                                { value: 'off', label: t('options.ponderHintsOff') },
+                            ]}
+                            onChange={ponder.setPonderHintVisibility}
+                        />
+                    </Row>
+                    <Row option={O.ponderTouchButton} hint={t('options.ponderTouchButtonDesc')}>
+                        <Toggle checked={ponder.showPonderTouchButton} onChange={ponder.setShowPonderTouchButton} />
+                    </Row>
+                </Group>
+            )}
         </>
     );
 };

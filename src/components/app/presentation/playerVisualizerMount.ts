@@ -21,7 +21,9 @@ type PlayerVisualizerMountInput = {
     handoffKeepsVisualizer?: boolean;
 };
 
-/** visualizer 是否挂载。三项遮挡条件缺一不可，任何一项失效都立即恢复挂载；交接要求挂着时一定挂着。 */
+import { isAndroidTv } from '../../../platform/runtime';
+
+/** visualizer 是否挂载。三项遮挡条件缺一不可，任何一项失效都立即恢复挂载；交接要求挂着时一定挂着。电视端在首页显示时直接卸载底层播放页可视化器，实现首页 0 背景 GPU 负载。 */
 export const shouldMountPlayerVisualizer = ({
     currentView,
     hasLatticeExited,
@@ -32,5 +34,6 @@ export const shouldMountPlayerVisualizer = ({
 }: PlayerVisualizerMountInput) => handoffKeepsVisualizer || (
     currentView !== 'lattice'
     && hasLatticeExited
+    && !(isAndroidTv() && shouldRevealHomeSurface)
     && !(shouldRevealHomeSurface && libraryOccludesPlayer && hasLibraryOcclusionSettled)
 );

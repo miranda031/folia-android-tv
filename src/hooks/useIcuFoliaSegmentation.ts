@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import type { VisualizerMode } from '../types';
+import { isAndroidTv } from '../platform/runtime';
 import { setLyricsState, usePlaybackStore } from '../stores/usePlaybackStore';
 import { getVisualizerRegistryEntry } from '../components/visualizer/registry';
 import { applyAutoWordSegmentation, loadIcuFolia } from '../utils/lyrics/icuFolia';
@@ -21,10 +22,11 @@ import { reworkShownLyrics } from '../components/app/playback/createLyricsSetter
 const HAN_OR_KANA = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u;
 
 export function useIcuFoliaSegmentation(visualizerMode: VisualizerMode) {
-    const usesWords = Boolean(getVisualizerRegistryEntry(visualizerMode).usesWordSegmentation);
+    const isTv = isAndroidTv();
+    const usesWords = !isTv && Boolean(getVisualizerRegistryEntry(visualizerMode).usesWordSegmentation);
     const lyrics = usePlaybackStore(state => state.lyrics);
-    const hasCjText = useMemo(() => Boolean(lyrics?.lines.some(line => HAN_OR_KANA.test(line.fullText))), [lyrics]);
-    const wanted = usesWords && hasCjText;
+    const hasCjText = useMemo(() => !isTv && Boolean(lyrics?.lines.some(line => HAN_OR_KANA.test(line.fullText))), [isTv, lyrics]);
+    const wanted = !isTv && usesWords && hasCjText;
 
     useEffect(() => {
         if (!wanted) {

@@ -8,6 +8,7 @@ import { useThemeSettingsStore } from '../../../stores/useThemeSettingsStore';
 import { resolveReducedMotion, useMotionSettingsStore } from '../../../stores/useMotionSettingsStore';
 import { confirmOnboardingLibrarySuite } from '../../../library/app/librarySuiteChoice';
 import { OVERLAY_CALM_TRANSITION, OVERLAY_TRANSITION } from '../../shared/overlayEntranceMotion';
+import { isAndroidTv } from '../../../platform/runtime';
 import { focusTvElement } from '../../../utils/tvSpatialFocus';
 import type { Theme } from '../../../types';
 
@@ -47,6 +48,14 @@ export const PlaybackEntryViewPrompt: React.FC<{ theme?: Theme | null }> = ({ th
     const closePrompt = useCallback(() => {
         if (usePlaybackEntryViewStore.getState().promptPages.includes('library-suite')) confirmOnboardingLibrarySuite();
         closeStoredPrompt();
+        if (isAndroidTv()) {
+            window.setTimeout(() => {
+                const homeTab = document.querySelector<HTMLElement>('[data-folia-home-header="true"] button[data-tv-nav="tab"]:not([disabled])');
+                if (homeTab) {
+                    focusTvElement(homeTab);
+                }
+            }, 80);
+        }
     }, [closeStoredPrompt]);
 
     return (
@@ -86,7 +95,7 @@ const PromptPanel: React.FC<{ theme?: Theme | null; pages: readonly PromptPage[]
 
     // 挂载或切页时，自动将焦点锁定在当前已选中的卡片（或第一个可用按钮）上，遥控器立即可控
     useEffect(() => {
-        const timer = window.setTimeout(() => {
+        const focusCurrentCard = () => {
             const root = panelRef.current;
             if (!root) return;
             const selectedBtn = root.querySelector<HTMLElement>('button[aria-pressed="true"]')
@@ -94,9 +103,28 @@ const PromptPanel: React.FC<{ theme?: Theme | null; pages: readonly PromptPage[]
             if (selectedBtn) {
                 focusTvElement(selectedBtn);
             }
-        }, 80);
-        return () => window.clearTimeout(timer);
+        };
+        const rafId = window.requestAnimationFrame(focusCurrentCard);
+        const timer = window.setTimeout(focusCurrentCard, 80);
+        return () => {
+            window.cancelAnimationFrame(rafId);
+            window.clearTimeout(timer);
+        };
     }, [pageIndex, page]);
+
+    useEffect(() => () => {
+        if (pages.includes('library-suite')) {
+            confirmOnboardingLibrarySuite();
+        }
+        if (isAndroidTv()) {
+            window.setTimeout(() => {
+                const homeTab = document.querySelector<HTMLElement>('[data-folia-home-header="true"] button[data-tv-nav="tab"]:not([disabled])');
+                if (homeTab) {
+                    focusTvElement(homeTab);
+                }
+            }, 80);
+        }
+    }, [pages]);
 
     const handleKeyDown = (event: React.KeyboardEvent) => {
         if (event.key === 'Escape') {
@@ -113,6 +141,15 @@ const PromptPanel: React.FC<{ theme?: Theme | null; pages: readonly PromptPage[]
     const goTo = (nextIndex: number) => {
         setDirection(nextIndex > pageIndex ? 1 : -1);
         setPageIndex(Math.max(0, Math.min(pages.length - 1, nextIndex)));
+    };
+
+    const handleTvCardActivate = () => {
+        if (!isAndroidTv()) return;
+        if (isLastPage) {
+            onClose();
+        } else {
+            goTo(pageIndex + 1);
+        }
     };
 
     const accentColor = theme?.accentColor || (isDaylight ? '#3b82f6' : '#60a5fa');
@@ -143,7 +180,7 @@ const PromptPanel: React.FC<{ theme?: Theme | null; pages: readonly PromptPage[]
             data-testid="playback-entry-view-prompt"
             data-folia-playback-prompt="true"
             data-onboarding-page={page}
-            className={`${bgClass} border rounded-[2rem] max-w-lg w-full max-h-[85vh] p-8 shadow-2xl relative overflow-y-auto overflow-x-hidden hide-scrollbar`}
+            className={`${bgClass} border rounded-[2rem] max-w-lg w-full max-h-[92vh] p-5 sm:p-7 shadow-2xl relative overflow-y-auto overflow-x-hidden hide-scrollbar`}
         >
             <AnimatePresence mode="wait" initial={false} custom={motionContext}>
                 <motion.div
@@ -158,30 +195,35 @@ const PromptPanel: React.FC<{ theme?: Theme | null; pages: readonly PromptPage[]
                     <div id="playback-entry-view-prompt-title" className={`text-lg font-semibold ${textPrimary}`}>
                         {t(`${namespace}.title`)}
                     </div>
-                    <div className={`mt-2 text-sm leading-relaxed ${textSecondary}`}>
+                    <div className={`mt-1.5 text-sm leading-relaxed ${textSecondary}`}>
                         {t(`${namespace}.description`)}
                     </div>
 
-                    <div className="mt-5">
+                    <div className="mt-4">
                         {page === 'library-suite' ? (
-                            <LibrarySuiteOnboardingOptions isDaylight={isDaylight} accentColor={accentColor} />
+                            <LibrarySuiteOnboardingOptions
+                                isDaylight={isDaylight}
+                                accentColor={accentColor}
+                                onActivateCard={handleTvCardActivate}
+                            />
                         ) : (
                             <PlaybackEntryViewOptions
                                 value={playbackEntryView}
                                 onChange={setPlaybackEntryView}
+                                onActivateCard={handleTvCardActivate}
                                 isDaylight={isDaylight}
                                 accentColor={accentColor}
                             />
                         )}
                     </div>
 
-                    <div className={`mt-5 text-[11px] ${textSecondary}`}>
+                    <div className={`mt-3 text-[11px] ${textSecondary}`}>
                         {t(`${namespace}.settingsHint`)}
                     </div>
                 </motion.div>
             </AnimatePresence>
 
-            <div className="mt-5 flex items-center justify-between gap-3">
+            <div className="mt-4 flex items-center justify-between gap-3">
                 {pages.length > 1 ? (
                     <div
                         className="flex items-center gap-1.5"

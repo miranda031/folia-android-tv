@@ -19,6 +19,8 @@ type OnboardingChoiceCardsProps<Value extends string> = {
     cards: ReadonlyArray<OnboardingChoiceCard<Value>>;
     value: Value | null;
     onChange: (value: Value) => void;
+    /** 卡片被点击或按遥控器确认键激活后的附加回调（例如电视端选卡后直接翻到下一页或关闭引导）。 */
+    onActivateCard?: (value: Value) => void;
     isDaylight: boolean;
     accentColor: string;
     /** 每张卡片上带的 data 属性名（值是选项本身），测试与样式按它定位，例如 `data-playback-entry-view`。 */
@@ -31,6 +33,7 @@ export const OnboardingChoiceCards = <Value extends string>({
     cards,
     value,
     onChange,
+    onActivateCard,
     isDaylight,
     accentColor,
     dataAttribute,
@@ -47,7 +50,10 @@ export const OnboardingChoiceCards = <Value extends string>({
                 <button
                     key={optionValue}
                     type="button"
-                    onClick={() => onChange(optionValue)}
+                    onClick={() => {
+                        onChange(optionValue);
+                        onActivateCard?.(optionValue);
+                    }}
                     aria-pressed={isSelected}
                     {...{ [dataAttribute]: optionValue }}
                     className={`text-left rounded-2xl border p-3 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white ${

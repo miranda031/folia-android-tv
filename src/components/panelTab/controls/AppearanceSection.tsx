@@ -33,6 +33,8 @@ import { useSettingsModalStore } from '../../../stores/useSettingsModalStore';
 import { selectDisplayPlayerState, usePlaybackStore } from '../../../stores/usePlaybackStore';
 import { usePonderStore } from '../../../stores/usePonderStore';
 import { Toggle, type PictureState } from '../../modal/settings/kit';
+import { isAndroidTv } from '../../../platform/runtime';
+import { isTvSafeVisualizerMode } from '../../../types/visualizerModes';
 
 // src/components/panelTab/controls/AppearanceSection.tsx
 // 外观区：歌词样式、背景、播放页透明背景三件事放在一起。
@@ -82,22 +84,25 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
     const openSettings = useSettingsModalStore(state => state.openSettings);
     // Only the modes whose typography is built from word segmentation get the chip; the registry
     // says which, so adding such a mode does not mean editing a list here.
-    const usesWordSegmentation = Boolean(getVisualizerRegistryEntry(visualizerMode).usesWordSegmentation);
+    const isTv = isAndroidTv();
+    const usesWordSegmentation = !isTv && Boolean(getVisualizerRegistryEntry(visualizerMode).usesWordSegmentation);
     const hasSavedSegmentation = useLyricSegmentationStore(state => Boolean(state.record));
-    const randomEnabled = useVisualizerSettingsStore(state => state.randomVisualizerModePerSong);
+    const randomEnabled = !isTv && useVisualizerSettingsStore(state => state.randomVisualizerModePerSong);
     const randomPool = useRandomPool();
     const visualizerBackgroundMode = useVisualizerSettingsStore(state => state.visualizerBackgroundMode);
     const setVisualizerBackgroundMode = useVisualizerSettingsStore(state => state.handleSetVisualizerBackgroundMode);
 
     const visualizerOptions = useMemo(
         () => [
-            ...VISUALIZER_REGISTRY.map(entry => ({
-                value: entry.mode,
-                label: getVisualizerModeLabel(entry.mode, t),
-            })),
-            { value: RANDOM_VISUALIZER_CHOICE, label: t('ui.visualizerRandom') },
+            ...VISUALIZER_REGISTRY
+                .filter(entry => !isTv || isTvSafeVisualizerMode(entry.mode))
+                .map(entry => ({
+                    value: entry.mode,
+                    label: getVisualizerModeLabel(entry.mode, t),
+                })),
+            ...(isTv ? [] : [{ value: RANDOM_VISUALIZER_CHOICE, label: t('ui.visualizerRandom') }]),
         ],
-        [t],
+        [isTv, t],
     );
     const visualizerModes = useMemo(() => visualizerOptions.map(option => option.value), [visualizerOptions]);
     const stepVisualizerMode = useVisualizerModeStepper(visualizerModes);
@@ -278,28 +283,32 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                         onOpenMore={openVisualizerSettings}
                     />
 
-                    <ModeStepperRow<VisualizerBackgroundMode>
-                        value={resolvedBackgroundMode}
-                        options={backgroundOptions}
-                        onSelect={setVisualizerBackgroundMode}
-                        onStep={stepBackgroundMode}
-                        renderGlyph={drawBackgroundGlyph}
-                        renderPicture={drawBackground}
-                        caption={t('options.visualizerBackgroundMode')}
-                        moreLabel={t('ui.moreSettings')}
-                        onOpenMore={openBackgroundSettings}
-                        open={openPicker === 'background'}
-                        onOpenChange={open => changeOpenPicker(open ? 'background' : null)}
-                        params={backgroundQuickControls}
-                    />
+                    {!isTv && (
+                        <ModeStepperRow<VisualizerBackgroundMode>
+                            value={resolvedBackgroundMode}
+                            options={backgroundOptions}
+                            onSelect={setVisualizerBackgroundMode}
+                            onStep={stepBackgroundMode}
+                            renderGlyph={drawBackgroundGlyph}
+                            renderPicture={drawBackground}
+                            caption={t('options.visualizerBackgroundMode')}
+                            moreLabel={t('ui.moreSettings')}
+                            onOpenMore={openBackgroundSettings}
+                            open={openPicker === 'background'}
+                            onOpenChange={open => changeOpenPicker(open ? 'background' : null)}
+                            params={backgroundQuickControls}
+                        />
+                    )}
                 </LyricPreviewProvider>
             </div>
 
-            {/* Only the switch turns it; the text names it for a screen reader. */}
-            <div className="flex min-h-11 items-center gap-3 py-1.5">
-                <span id={transparentLabelId} className="min-w-0 flex-1 text-sm leading-5">{t('options.transparentPlayerBackground')}</span>
-                <Toggle checked={transparentPlayerBackground} onChange={onToggleTransparentPlayerBackground} labelledBy={transparentLabelId} />
-            </div>
+            {!isTv && (
+                /* Only the switch turns it; the text names it for a screen reader. */
+                <div className="flex min-h-11 items-center gap-3 py-1.5">
+                    <span id={transparentLabelId} className="min-w-0 flex-1 text-sm leading-5">{t('options.transparentPlayerBackground')}</span>
+                    <Toggle checked={transparentPlayerBackground} onChange={onToggleTransparentPlayerBackground} labelledBy={transparentLabelId} />
+                </div>
+            )}
         </div>
     );
 };

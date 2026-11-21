@@ -317,15 +317,18 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
     const safeFocusedIndex = clampFocusedIndex(focusedIndex, items.length);
     const itemsSignature = useMemo(() => getGrid3DItemsSignature(items), [items]);
 
+    const isTv = isAndroidTv();
     const loadedIndices = useMemo(() => {
         const indexes = new Set<number>();
-        const start = Math.max(0, safeFocusedIndex - 12);
-        const end = Math.min(items.length - 1, safeFocusedIndex + 12);
+        const loadRadius = isTv ? 4 : 12;
+        const start = Math.max(0, safeFocusedIndex - loadRadius);
+        const end = Math.min(items.length - 1, safeFocusedIndex + loadRadius);
         for (let index = start; index <= end; index += 1) indexes.add(index);
         return indexes;
-    }, [items.length, safeFocusedIndex]);
+    }, [isTv, items.length, safeFocusedIndex]);
 
-    const { start: windowStart, end: windowEnd } = getGrid3DWindowRange(safeFocusedIndex, items.length);
+    const effectiveWindowRadius = isTv ? 5 : GRID3D_WINDOW_RADIUS;
+    const { start: windowStart, end: windowEnd } = getGrid3DWindowRange(safeFocusedIndex, items.length, effectiveWindowRadius);
     const windowedItems = items.slice(windowStart, windowEnd);
     const cardPitch = coverSize + GRID3D_CARD_GAP;
     const leadingSpacerWidth = windowStart * cardPitch;
@@ -820,6 +823,7 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
                                 <div
                                     key={item.id}
                                     data-grid3d-index={index}
+                                    data-grid3d-focused={isFocused ? "true" : undefined}
                                     data-tv-nav={isAndroidTv() ? "card" : undefined}
                                     tabIndex={isAndroidTv() ? 0 : -1}
                                     role={isAndroidTv() ? "button" : undefined}
@@ -865,7 +869,7 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
                                     ) : (
                                         <div
                                             {...{ [MORPH_FRAME_ATTR]: '' }}
-                                            className="rounded-xl border p-4 flex flex-col items-center backdrop-blur-md shadow-lg hover:shadow-2xl theme-polaroid-card"
+                                            className={`rounded-xl border p-4 flex flex-col items-center ${isTv ? '' : 'backdrop-blur-md'} shadow-lg hover:shadow-2xl theme-polaroid-card`}
                                             style={{ width: coverSize }}
                                         >
                                             <div className="w-full aspect-square rounded-lg overflow-hidden bg-zinc-800/20 relative shadow-inner mb-4 flex items-center justify-center">

@@ -1,4 +1,5 @@
 import { Boxes, Contrast, Database, Gauge, Keyboard, LayoutGrid, Link2, Monitor, MonitorPlay, PlayCircle, SlidersHorizontal, Terminal, TextAlignStart, type LucideIcon } from 'lucide-react';
+import { isAndroidTv } from '../../../../platform/runtime';
 // src/components/modal/settings/navigation/settingsNavModel.ts
 // Single source of truth for the settings categories: their order in the side list, their grouping,
 // icons and names. A category is cut by what the listener is looking at or doing, so each page holds
@@ -88,22 +89,23 @@ export const SETTINGS_NAV_GROUP_SPECS: GroupSpec[] = [
     },
 ];
 
-/** Resolves the grouping into translated nav items, dropping desktop-only sections (and groups left empty) on web. */
-export const buildSettingsNavGroups = (t: Translate, options: { isElectron: boolean }): SettingsNavGroup[] => (
-    SETTINGS_NAV_GROUP_SPECS
+/** Resolves the grouping into translated nav items, dropping desktop-only sections (and groups left empty) on web, and pruning keyboard-only/dev sections on TV. */
+export const buildSettingsNavGroups = (t: Translate, options: { isElectron: boolean }): SettingsNavGroup[] => {
+    const isTv = isAndroidTv();
+    return SETTINGS_NAV_GROUP_SPECS
         .map(group => ({
             id: group.id,
             label: t(group.labelKey),
             items: group.sections
-                .filter(section => !section.electronOnly || options.isElectron)
+                .filter(section => (!section.electronOnly || options.isElectron) && (!isTv || (section.id !== 'interaction' && section.id !== 'developer')))
                 .map(section => ({
                     id: section.id,
                     icon: section.icon,
                     label: t(section.labelKey),
                 })),
         }))
-        .filter(group => group.items.length > 0)
-);
+        .filter(group => group.items.length > 0);
+};
 
 export const flattenSettingsNavItems = (groups: SettingsNavGroup[]): SettingsNavItem[] => (
     groups.flatMap(group => group.items)

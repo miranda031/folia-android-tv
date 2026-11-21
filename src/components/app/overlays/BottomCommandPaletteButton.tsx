@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { openCommandPalette, useAppViewStore } from '../../../stores/useAppViewStore';
 import { usePlayerChromeSettingsStore } from '../../../stores/usePlayerChromeSettingsStore';
 import { useAppChromeStore } from '../../../stores/useAppChromeStore';
+import { isAndroidTv } from '../../../platform/runtime';
 
 // src/components/app/overlays/BottomCommandPaletteButton.tsx
 // 触屏设备按不了 Ctrl+K，所以在底部左下角放一个按钮打开同一个命令面板。
@@ -64,6 +65,11 @@ const BottomCommandPaletteButton: React.FC = () => {
     }, [autoHide]);
 
     const shown = !linkedHidden && !paletteOpen && (!autoHide || visible);
+
+    // 电视端遥控器不需要桌面/触屏的 Mac ⌘ 命令面板悬浮球，避免遮挡画面或拦截遥控器下方向键焦点
+    if (isAndroidTv()) {
+        return null;
+    }
 
     return (
         <button

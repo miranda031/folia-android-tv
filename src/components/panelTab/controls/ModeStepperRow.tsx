@@ -4,6 +4,7 @@ import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import QuickEffectPicker from '../QuickEffectPicker';
 import type { PictureState } from '../../modal/settings/kit';
 import { kitTransition, useKitReducedMotion } from '../../modal/settings/kit/motion';
+import { isAndroidTv } from '../../../platform/runtime';
 
 // src/components/panelTab/controls/ModeStepperRow.tsx
 // 「‹ 字形 说明/当前模式⌄ 主参数 ›」一行，其余参数放在下面一行、靠右和右端箭头对齐。箭头直接换到相邻模式，
@@ -94,11 +95,18 @@ const ModeStepperRow = <Value extends string>({
                 <button
                     ref={triggerRef}
                     type="button"
-                    onClick={() => onOpenChange(!open)}
+                    onClick={() => {
+                        if (isAndroidTv()) {
+                            setStepDirection(1);
+                            onStep(1);
+                            return;
+                        }
+                        onOpenChange(!open);
+                    }}
                     className={`st-t-fast st-focus-inside flex h-12 min-w-0 flex-1 items-center rounded-[10px] pl-1.5 pr-2 text-left transition-colors hover:bg-[var(--st-fill)] ${open ? 'bg-[var(--st-fill)]' : ''}`}
                     aria-label={caption}
-                    aria-haspopup="true"
-                    aria-expanded={open}
+                    aria-haspopup={isAndroidTv() ? undefined : "true"}
+                    aria-expanded={isAndroidTv() ? undefined : open}
                 >
                     <motion.span
                         key={value}

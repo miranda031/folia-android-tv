@@ -22,9 +22,10 @@ const ART_BY_SUITE: Readonly<Record<string, OnboardingChoiceArt>> = {
 type LibrarySuiteOnboardingOptionsProps = {
     isDaylight: boolean;
     accentColor: string;
+    onActivateCard?: (suiteId: LibrarySuiteId) => void;
 };
 
-export const LibrarySuiteOnboardingOptions: React.FC<LibrarySuiteOnboardingOptionsProps> = ({ isDaylight, accentColor }) => {
+export const LibrarySuiteOnboardingOptions: React.FC<LibrarySuiteOnboardingOptionsProps> = ({ isDaylight, accentColor, onActivateCard }) => {
     const { t } = useTranslation();
     const activeSuiteId = useActiveLibrarySuiteId();
     const suiteIds = listOnboardingLibrarySuiteIds();
@@ -42,6 +43,7 @@ export const LibrarySuiteOnboardingOptions: React.FC<LibrarySuiteOnboardingOptio
             cards={cards}
             value={suiteIds.includes(activeSuiteId) ? activeSuiteId : null}
             onChange={chooseLibrarySuite}
+            onActivateCard={onActivateCard}
             isDaylight={isDaylight}
             accentColor={accentColor}
             dataAttribute="data-onboarding-library-suite"

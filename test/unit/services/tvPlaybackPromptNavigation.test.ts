@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { hasActiveTvOverlayOrHigherView, dispatchTvKeyCapture } from '../../../src/services/tvNavigationEngine';
+import { usePlaybackEntryViewStore } from '../../../src/stores/usePlaybackEntryViewStore';
 
 describe('tvNavigationEngine - PlaybackEntryViewPrompt', () => {
     let container: HTMLDivElement;
@@ -201,5 +202,56 @@ describe('tvNavigationEngine - PlaybackEntryViewPrompt', () => {
         const leftEvent = new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true });
         dispatchTvKeyCapture(leftEvent);
         expect(document.activeElement).toBe(card1);
+    });
+
+    it('closes playback prompt cleanly on page 1 Escape (when only Next button exists) without capture recursion', () => {
+        usePlaybackEntryViewStore.setState({
+            isPlaybackEntryViewPromptOpen: true,
+            promptPages: ['library-suite', 'playback-entry-view'],
+        });
+
+        const prompt = document.createElement('div');
+        prompt.setAttribute('data-folia-playback-prompt', 'true');
+        prompt.setAttribute('data-testid', 'playback-entry-view-prompt');
+        vi.spyOn(prompt, 'getBoundingClientRect').mockReturnValue({
+            width: 500,
+            height: 400,
+            top: 100,
+            left: 200,
+            bottom: 500,
+            right: 700,
+            x: 200,
+            y: 100,
+            toJSON: () => ({}),
+        });
+
+        const nextBtn = document.createElement('button');
+        nextBtn.setAttribute('data-testid', 'playback-entry-view-prompt-next');
+        vi.spyOn(nextBtn, 'getBoundingClientRect').mockReturnValue({
+            width: 100,
+            height: 40,
+            top: 400,
+            left: 550,
+            bottom: 440,
+            right: 650,
+            x: 550,
+            y: 400,
+            toJSON: () => ({}),
+        });
+        prompt.appendChild(nextBtn);
+        container.appendChild(prompt);
+
+        const captureListener = (ev: KeyboardEvent) => {
+            dispatchTvKeyCapture(ev);
+        };
+        window.addEventListener('keydown', captureListener, { capture: true });
+        try {
+            const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+            expect(() => prompt.dispatchEvent(escapeEvent)).not.toThrow();
+            expect(escapeEvent.defaultPrevented).toBe(true);
+            expect(usePlaybackEntryViewStore.getState().isPlaybackEntryViewPromptOpen).toBe(false);
+        } finally {
+            window.removeEventListener('keydown', captureListener, { capture: true });
+        }
     });
 });

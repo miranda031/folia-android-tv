@@ -12,6 +12,8 @@ import softFocus from './styleTransition/softFocus';
 import { alongProgress } from './styleTransition/layerTransition';
 import { holdTurns } from './preview/pictureTurns';
 import { useReducedMotionFor } from '../../hooks/useReducedMotionFor';
+import { isAndroidTv } from '../../platform/runtime';
+import { normalizeTvVisualizerMode } from '../../types/visualizerModes';
 
 interface VisualizerRendererProps extends VisualizerSharedProps {
     mode: VisualizerMode;
@@ -29,7 +31,9 @@ const VisualizerRenderer: React.FC<VisualizerRendererProps> = ({ mode, animateSt
     // A style's code arrives the first time it is shown. The mode on screen moves to a new style in a
     // render React keeps off screen until that code has come, so the style before stays until then;
     // the style is switched here, in one place, with the props tuned for it.
-    const shownMode = useDeferredValue(mode);
+    const isTv = isAndroidTv();
+    const effectiveMode = isTv ? normalizeTvVisualizerMode(mode) : mode;
+    const shownMode = useDeferredValue(effectiveMode);
     const entry = getVisualizerRegistryEntry(shownMode);
     const sharedProps = {
         ...props,
@@ -40,9 +44,9 @@ const VisualizerRenderer: React.FC<VisualizerRendererProps> = ({ mode, animateSt
     };
     const resolvedProps = applyVisualizerTuning(shownMode, sharedProps, props.visualizerTunings);
     // A switch cuts where the host does not animate, in static mode, and where the user reduces
-    // interface motion (the app's own setting, not the system's).
+    // interface motion (the app's own setting, not the system's). 电视端直接切入新样式，避免过渡期间同时挂载新旧两套歌词舞台造成掉帧。
     const reducedMotion = useReducedMotionFor('uiMicroMotion');
-    const transition = animateStyleSwitch && !resolvedProps.staticMode && !reducedMotion ? softFocus : null;
+    const transition = animateStyleSwitch && !resolvedProps.staticMode && !reducedMotion && !isTv ? softFocus : null;
     // A blend's song hand-off, for the style that draws one (VisualizerSongHandoff). The background takes
     // the incoming song (its cover, seed and theme) when the blend starts, and changes with the transition
     // of any song change, played along the hand-off: as long as the blend, in step with the song it hands
@@ -64,7 +68,7 @@ const VisualizerRenderer: React.FC<VisualizerRendererProps> = ({ mode, animateSt
     const styleSwitch = useStyleSwitch(shownMode, transition);
     // From the choice until the new style is mounted (its code may still be on its way), no small
     // picture starts either; from then on its style layer holds them back (pictureTurns).
-    const switchAsked = transition !== null && mode !== shownMode;
+    const switchAsked = transition !== null && effectiveMode !== shownMode;
     useLayoutEffect(() => (switchAsked ? holdTurns() : undefined), [switchAsked]);
     // A style still leaving after a switch is drawn with the props tuned for it.
     const renderStyle = (styleMode: VisualizerMode) => getVisualizerRegistryEntry(styleMode).render(
